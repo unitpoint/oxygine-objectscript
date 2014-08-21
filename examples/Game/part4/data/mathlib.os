@@ -2,7 +2,7 @@
 vec2 = extends Object {
 	__construct = function(x, y){
 		@x = x || 0 // numberOf(x) || throw "x number required"
-		@y = y || x // numberOf(y || x) || throw "y number required"
+		@y = y || @x // numberOf(y || x) || throw "y number required"
 	},
 	
 	__add = function(b){

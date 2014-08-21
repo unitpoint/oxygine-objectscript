@@ -150,6 +150,7 @@ template <class T> struct CtypeOxygineSmartClass
 OS_DECL_CTYPE_NAME(Vector2, "vec2");
 
 OS_DECL_OX_CLASS_NAME(Object, "OxygineObject");
+OS_DECL_OX_CLASS(EventDispatcher);
 OS_DECL_OX_CLASS(Actor);
 OS_DECL_OX_CLASS(Sprite);
 OS_DECL_OX_CLASS(RootActor);
@@ -168,14 +169,11 @@ struct CtypeValue<Vector2>
 	static Vector2 getArg(ObjectScript::OS * os, int offs)
 	{
 		if(os->isObject(offs)){
-			os->getProperty(offs, "x"); // required
-			float x = os->popFloat();
-		
-			os->getProperty(offs, "y"); // required
-			float y = os->popFloat();
-
+			float x = (os->getProperty(offs, "x"), os->popFloat());
+			float y = (os->getProperty(offs, "y"), os->popFloat());
 			return Vector2(x, y);
 		}
+#if 0
 		if(os->isArray(offs)){
 			os->pushStackValue(offs);
 			os->pushNumber(0);
@@ -189,7 +187,8 @@ struct CtypeValue<Vector2>
 
 			return Vector2(x, y);
 		}
-		os->setException("vec2 expected");
+#endif
+		os->setException("vec2 required");
 		return Vector2(0, 0);
 	}
 
@@ -236,6 +235,64 @@ struct Oxygine
 		registerUserClass<Object>(os, funcs);
 	}
 
+	static void registerEventDispatcher(OS * os)
+	{
+		struct Lib {
+			void eventCallback(Event *ev)
+			{
+				// int funcId
+			}
+
+			static int addEventListener(OS * os, int params, int, int, void*)
+			{
+				OS_GET_SELF(Sprite*);
+				if(params < 2){
+					os->setException("two arguments required");
+					return 0;
+				}
+				if(!os->isFunction(-params+1)){
+					os->setException("2nd argument must be function");
+					return 0;
+				}
+				int funcId = os->getValueId(-params+1);
+				eventType ev;
+				switch(os->getType(-params+0)){
+				case OS_VALUE_TYPE_NUMBER:
+					ev = (eventType)os->toInt(-params+0);
+					break;
+
+				case OS_VALUE_TYPE_STRING:
+					{
+						OS::String name = os->toString(-params+0);
+						ev = (eventType)name.string->hash;
+						break;
+					}
+
+				default:
+					os->setException("the first argument should be string or number");
+					return 0;
+				}
+				self->addEventListener(ev, CLOSURE((Lib*)funcId, &Lib::eventCallback));
+				return 0;
+			}
+
+			static int removeEventListener(OS * os, int params, int, int, void*)
+			{
+				OS_GET_SELF(Sprite*);
+				return 0;
+			}
+		};
+
+		OS::FuncDef funcs[] = {
+			def("removeAllEventListeners", &EventDispatcher::removeAllEventListeners),
+			def("__get@listenersCount", &EventDispatcher::getListenersCount),
+			{"addEventListener", &Lib::addEventListener},
+			{"removeEventListener", &Lib::removeEventListener},
+			{}
+		};
+		registerUserClass<EventDispatcher, Object>(os, funcs);
+	}
+
 	static void registerActor(OS * os)
 	{
 		struct Lib // Actor: public oxygine::Actor
@@ -269,7 +326,7 @@ struct Oxygine
 			def("__set@anchor", (void(Actor::*)(const Vector2 &))&Actor::setAnchor),
 			{}
 		};
-		registerUserClass<Actor, Object>(os, funcs);
+		registerUserClass<Actor, EventDispatcher>(os, funcs);
 	}
 
 	static void registerSprite(OS * os)
@@ -315,6 +372,7 @@ struct Oxygine
 		initDateTimeExtension(os);
 
 		registerObject(os);
+		registerEventDispatcher(os);
 		registerActor(os);
 		registerSprite(os);
 		registerRootActor(os);
