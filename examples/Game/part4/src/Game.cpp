@@ -20,9 +20,9 @@ void Game::init()
 	setSize(getRoot()->getSize());
 
 	//create background
-	spSprite sky = new Sprite;
+	/* spSprite sky = new Sprite;
 	sky->setResAnim(res::ui.getResAnim("sky"));
-	sky->attachTo(this);
+	sky->attachTo(this); */
 	
 	//create separate layer for elements virtual joystick and other UI in future
 	_ui = new Actor;
