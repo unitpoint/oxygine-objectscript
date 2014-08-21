@@ -245,7 +245,7 @@ struct Oxygine
 
 			static int addEventListener(OS * os, int params, int, int, void*)
 			{
-				OS_GET_SELF(Sprite*);
+				OS_GET_SELF(EventDispatcher*);
 				if(params < 2){
 					os->setException("two arguments required");
 					return 0;
