@@ -5,8 +5,9 @@ DECLARE_SMART(Player, spPlayer);
 class Player: public Unit
 {
 public:
-	Player();
+	OS_DECLARE_CLASSINFO(Player);
 
+	Player();
 	
 protected:
 	void _init();

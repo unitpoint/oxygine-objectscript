@@ -21773,6 +21773,14 @@ void OS::initCoreFunctions()
 			os->setException(String::format(os, OS_TEXT("you can't create instance of module %s"), os->getValueClassname(-params-1).toChar()));
 			return 0;
 		}
+
+		static int initNewInstance(OS * os, int params, int, int, void*)
+		{
+			Core::Value self_var = os->core->getStackValue(-params+0);
+			os->core->initNewInstance(self_var.getGCValue());
+			// os->core->pushValue(self_var);
+			return 0;
+		}
 	};
 	FuncDef list[] = {
 		{core->strings->__construct, Lib::construct},
@@ -21808,6 +21816,7 @@ void OS::initCoreFunctions()
 		// {OS_TEXT("resolvePath"), Lib::resolvePath},
 		{OS_TEXT("debugBackTrace"), Lib::debugBackTrace},
 		{OS_TEXT("terminate"), Lib::terminate},
+		{OS_TEXT("__initnewinstance"), Lib::initNewInstance},
 		{}
 	};
 	NumberDef numbers[] = {
@@ -22853,14 +22862,6 @@ dump_object:
 			return 0;
 		}
 
-		static int initNewInstance(OS * os, int params, int, int, void*)
-		{
-			Core::Value self_var = os->core->getStackValue(-params-1);
-			os->core->initNewInstance(self_var.getGCValue());
-			os->core->pushValue(self_var);
-			return 1;
-		}
-
 		static int __construct(OS * os, int params, int, int, void*)
 		{
 			// it should be exist to prevent getter while __construct call
@@ -22915,7 +22916,6 @@ dump_object:
 		{OS_TEXT("setLast"), Object::setLast},
 		{OS_TEXT("__del@last"), Object::deleteLast},
 		{OS_TEXT("deleteLast"), Object::deleteLast},
-		{OS_TEXT("initNewInstance"), Object::initNewInstance},
 		{}
 	};
 	core->pushValue(core->prototypes[Core::PROTOTYPE_OBJECT]);
@@ -25902,18 +25902,18 @@ void OS::initPreScript()
 
 		function Object.__newinstance(){
 			var r = {}
-			if(this === Object){
+			/* if(this === Object){
 				for(var i, arg in arguments){
 					r[i] = arg
 				}
 				return r
-			}
+			} */
 			r.prototype = this
-			Object.initNewInstance.call(r)
+			__initnewinstance(r)
 			r.__construct.apply(r, arguments)
 			return r
 		}
-
+		
 		function Array.__newinstance(){
 			return arguments
 		}

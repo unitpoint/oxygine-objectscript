@@ -57,13 +57,13 @@
     <ClCompile Include="../src/res.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\objectscript\src\objectscript.cpp">
+    <ClCompile Include="..\..\..\..\objectscript\src\objectscript.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\objectscript\src\os-heap.cpp">
+    <ClCompile Include="..\..\..\..\objectscript\src\os-heap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\objectscript\src\ext-datetime\os-datetime.cpp">
+    <ClCompile Include="..\..\..\..\objectscript\src\ext-datetime\os-datetime.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

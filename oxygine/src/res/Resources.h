@@ -28,6 +28,8 @@ namespace oxygine
 	class Resources: public Resource
 	{
 	public:
+		OS_DECLARE_CLASSINFO(Resources);
+
 		typedef vector<spResource> resources;
 		typedef Resource* (*createResourceCallback)(CreateResourceContext &context);
 		typedef Closure<void (Resource *)> ResLoadedCallback;

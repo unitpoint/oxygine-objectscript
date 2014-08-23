@@ -12,6 +12,8 @@ namespace oxygine
 	class Clock: public Object
 	{
 	public:
+		OS_DECLARE_CLASSINFO(Clock);
+
 		Clock();
 		~Clock();
 

@@ -6,6 +6,8 @@ DECLARE_SMART(Rocket, spRocket);
 class Rocket: public Unit
 {
 public:
+	OS_DECLARE_CLASSINFO(Rocket);
+
 	Rocket(const Vector2 &dir);
 	
 protected:

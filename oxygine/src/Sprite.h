@@ -12,9 +12,6 @@ namespace oxygine
 	class ResAnim;
 
 	DECLARE_SMART(Sprite, spSprite);
-		
-	
-
 	class Sprite : public VStyleActor
 	{
 	public:

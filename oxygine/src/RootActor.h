@@ -10,6 +10,8 @@ namespace oxygine
 	class RootActor : public Actor
 	{
 	public:
+		OS_DECLARE_CLASSINFO(RootActor);
+
 		enum
 		{
 			ACTIVATE = makefourcc('_', 'R', 'A', 'c'),

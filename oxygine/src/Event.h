@@ -40,9 +40,12 @@ namespace oxygine
 	typedef char pointer_index;
 	class PointerState;
 
+	DECLARE_SMART(TouchEvent, spTouchEvent);
 	class TouchEvent: public Event
 	{
 	public:
+		OS_DECLARE_CLASSINFO(TouchEvent);
+
 		enum
 		{
 			/*

@@ -24,6 +24,8 @@ namespace oxygine
 	class Texture : public Object
 	{
 	public:		
+		OS_DECLARE_CLASSINFO(Texture);
+
 		enum 
 		{
 			lock_read = 0x1,

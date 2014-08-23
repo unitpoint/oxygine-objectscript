@@ -17,3 +17,8 @@ actor.height = 100
 print "actor.x: ${actor.x}, actor.anchor: ${actor.anchor}"
 
 root.addChild(actor)
+
+actor.addEventListener(TouchEvent.CLICK, function(ev){
+	print "CLICK: ${ev}"
+	ev.stopImmediatePropagation()
+})

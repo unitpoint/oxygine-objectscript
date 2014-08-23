@@ -27,6 +27,11 @@ namespace oxygine
 		ObjectBase(bool assignID = true);
 		virtual ~ObjectBase();
 
+#ifdef OX_WITH_OBJECTSCRIPT
+		// const OS_ClassInfo& getClassInfoOfObjectBase(){ static OS_ClassInfo info = {"ObjectBase"}; return info; }
+		virtual const OS_ClassInfo& getClassInfo() = 0;
+#endif
+
 		const std::string&	getName() const;		
 		void*				getUserData() const {return __userData;}
 		int					getObjectID()const {return __id;}
@@ -87,16 +92,19 @@ namespace oxygine
 	class Object: public ref_counter, public ObjectBase
 	{
 	public:
+		OS_DECLARE_CLASSINFO_STATIC_NAME(Object, "OxygineObject"); // name Object is used already by ObjectScript
+
 		Object(const Object &src);
 		Object(bool assignUniqueID = true);
 
 	protected:
 #ifdef OX_DEBUG
 		int __check;
-		void __doCheck();
+		void __doCheck()
 #else
 		void __doCheck(){}
 #endif
+		;
 	};
 	
 }

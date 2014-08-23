@@ -5,6 +5,7 @@ DECLARE_SMART(Enemy, spEnemy);
 class Enemy: public Unit
 {
 public:
+	OS_DECLARE_CLASSINFO(Enemy);
 
 	void explode();
 

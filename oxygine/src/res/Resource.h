@@ -16,6 +16,8 @@ namespace oxygine
 	class Resource: public Object//Base
 	{
 	public:
+		OS_DECLARE_CLASSINFO(Resource);
+
 		Resource();
 		~Resource();
 

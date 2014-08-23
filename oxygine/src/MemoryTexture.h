@@ -8,10 +8,11 @@
 namespace oxygine
 {
 	DECLARE_SMART(MemoryTexture, spMemoryTexture);
-
 	class MemoryTexture : public Texture
 	{
 	public:
+		OS_DECLARE_CLASSINFO(MemoryTexture);
+
 		MemoryTexture();
 		~MemoryTexture();
 

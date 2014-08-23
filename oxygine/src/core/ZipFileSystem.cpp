@@ -236,6 +236,7 @@ namespace file
 	class fileHandleZip: public fileHandle
 	{
 	public:
+		OS_DECLARE_CLASSINFO(fileHandleZip);
 
 		fileHandleZip(const file_entry *entry):_entry(entry)
 		{

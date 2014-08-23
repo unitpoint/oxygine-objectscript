@@ -11,8 +11,6 @@ using namespace oxygine;
 #include <os-binder.h>
 #include <ext-datetime/os-datetime.h>
 
-// ../objectscript/src/ext-datetime;
-
 class OxygineOS: public ObjectScript::OS
 {
 public:
@@ -82,57 +80,67 @@ public:
 
 namespace ObjectScript {
 
-template <class T> struct CtypeOxygineClass{};
-template <class T> struct CtypeOxygineClass<T*>
+template <class T> struct CtypeOXClass{};
+template <class T> struct CtypeOXClass<T*>
 {
 	typedef typename RemoveConst<T>::type ttype;
 	typedef typename RemoveConst<T>::type * type;
 
 	static bool isValid(const type p){ return p != NULL; }
 	static type def(ObjectScript::OS*){ return type(); }
-	static type getArg(ObjectScript::OS * os, int offs){ return (type)os->toUserdata(CtypeId<ttype>::getInstanceId(), offs, CtypeId<ttype>::getId()); }
-	static void push(ObjectScript::OS * os, const type val)
+	static type getArg(ObjectScript::OS * os, int offs)
+	{
+		const OS_ClassInfo& classinfo = ttype::getClassInfoStatic();
+		return (type)os->toUserdata(classinfo.instance_id, offs, classinfo.class_id);
+	}
+	static void push(ObjectScript::OS * os, const type& val)
 	{
 		if(!val){
 			os->pushNull();
 			return;
 		}
-		// pushCtypeValue(os, val);
-		os->pushUserPointer(CtypeId<ttype>::getInstanceId(), val, UserDataDestructor<ttype>::dtor);
 		val->addRef();
+		const OS_ClassInfo& classinfo = val->getClassInfo();
+		os->pushUserPointer(classinfo.instance_id, val, UserDataDestructor<ttype>::dtor);
 		os->pushStackValue();
-		os->getGlobal(CtypeName<ttype>::getName());
-		if(!os->isUserdata(CtypeId<ttype>::getId(), -1)){
+		os->getGlobal(classinfo.classname);
+		if(!os->isUserdata(classinfo.class_id, -1)){
+			OX_ASSERT(false);
 			os->pop(2);
 		}else{
-			os->setPrototype(CtypeId<ttype>::getInstanceId());
+			os->setPrototype(classinfo.instance_id);
 		}
 	}
 };
 
-template <class T> struct CtypeOxygineSmartClass
+template <class T> struct CtypeOXSmartClass
 {
 	typedef typename T::element_type ttype;
 	typedef typename T::element_type * type;
 
 	static bool isValid(const type p){ return p != NULL; }
 	static type def(ObjectScript::OS*){ return type(); }
-	static type getArg(ObjectScript::OS * os, int offs){ return (type)os->toUserdata(CtypeId<ttype>::getInstanceId(), offs, CtypeId<ttype>::getId()); }
+	static type getArg(ObjectScript::OS * os, int offs)
+	{
+		const OS_ClassInfo& classinfo = ttype::getClassInfoStatic();
+		return (type)os->toUserdata(classinfo.instance_id, offs, classinfo.class_id);
+	}
 	static void push(ObjectScript::OS * os, const T& val)
 	{
 		if(!val){
 			os->pushNull();
 			return;
 		}
-		// pushCtypeValue(os, val);
-		os->pushUserPointer(CtypeId<ttype>::getInstanceId(), val.get(), UserDataDestructor<ttype>::dtor);
 		val->addRef();
+		const OS_ClassInfo& classinfo = val->getClassInfo();
+		os->pushUserPointer(classinfo.instance_id, val.get(), UserDataDestructor<ttype>::dtor);
 		os->pushStackValue();
-		os->getGlobal(CtypeName<ttype>::getName());
-		if(!os->isUserdata(CtypeId<ttype>::getId(), -1)){
+		os->getGlobal(classinfo.classname);
+		if(!os->isUserdata(classinfo.class_id, -1)){
+			OX_ASSERT(false);
 			os->pop(2);
 		}else{
-			os->setPrototype(CtypeId<ttype>::getInstanceId());
+			os->setPrototype(classinfo.instance_id);
 		}
 	}
 };
@@ -140,22 +148,21 @@ template <class T> struct CtypeOxygineSmartClass
 #define OS_DECL_OX_CLASS(type) OS_DECL_OX_CLASS_NAME(type, #type)
 #define OS_DECL_OX_CLASS_NAME(type, name) \
 	OS_DECL_CTYPE_NAME(type, name); \
-	template <> struct CtypeValue<type*>: public CtypeOxygineClass<type*>{}; \
-	template <> struct CtypeValue< intrusive_ptr<type> >: public CtypeOxygineSmartClass< intrusive_ptr<type> >{}; \
+	template <> struct CtypeValue<type*>: public CtypeOXClass<type*>{}; \
+	template <> struct CtypeValue< intrusive_ptr<type> >: public CtypeOXSmartClass< intrusive_ptr<type> >{}; \
 	template <> struct UserObjectDestructor<type>{ static void dtor(type * p){ p->releaseRef(); } };
 
-// OS_DECL_OX_CLASS(oxygine::RootActor, "RootActor");
-
-// OS_DECL_CTYPE(b2Vec2);
-OS_DECL_CTYPE_NAME(Vector2, "vec2");
-
 OS_DECL_OX_CLASS_NAME(Object, "OxygineObject");
+OS_DECL_OX_CLASS(Event);
+OS_DECL_OX_CLASS(TouchEvent);
 OS_DECL_OX_CLASS(EventDispatcher);
 OS_DECL_OX_CLASS(Actor);
 OS_DECL_OX_CLASS(Sprite);
 OS_DECL_OX_CLASS(RootActor);
 
 // =====================================================================
+
+OS_DECL_CTYPE_NAME(Vector2, "vec2");
 
 template <>
 struct CtypeValue<Vector2>
@@ -214,6 +221,61 @@ struct CtypeValue<Vector2>
 	}
 };
 
+// typedef std::map<std::string, OS_ClassInfo> OS_ClassInfos;
+// OS_ClassInfos classinfos;
+
+template <class T>
+void registerOXClass(ObjectScript::OS * os, const ObjectScript::OS::FuncDef * list, const ObjectScript::OS::NumberDef * numbers = NULL, bool instantiable = true)
+{
+	const OS_ClassInfo& classinfo = T::getClassInfoStatic();
+	/* OS_ClassInfos::iterator it = classinfos.find(classinfo.classname);
+	if(it != classinfos.end()){
+		OX_ASSERT(false);
+	}
+	classinfos.insert(OS_ClassInfos:: classinfo.classname, classinfo);
+	*/
+
+	os->pushGlobals();
+	os->pushString(classinfo.classname);
+	os->pushUserdata(classinfo.class_id, 0, NULL, NULL);
+	os->setFuncs(list);
+	os->setNumbers(numbers);
+	os->pushBool(instantiable);
+	os->setProperty(-2, OS_TEXT("__instantiable"), false);
+	os->setProperty();
+}
+
+template <class T, class Prototype>
+void registerOXClass(ObjectScript::OS * os, const ObjectScript::OS::FuncDef * list, const ObjectScript::OS::NumberDef * numbers = NULL, bool instantiable = true)
+{
+	const OS_ClassInfo& classinfo = T::getClassInfoStatic();
+	/* OS_ClassInfos::iterator it = classinfos.find(classinfo.classname);
+	if(it != classinfos.end()){
+		OX_ASSERT(false);
+	}
+	classinfos.insert(classinfo.classname, classinfo);
+	*/
+
+	os->pushGlobals();
+	os->pushString(classinfo.classname);
+	os->pushUserdata(classinfo.class_id, 0, NULL, NULL);
+	os->setFuncs(list);
+	os->setNumbers(numbers);
+	os->pushBool(instantiable);
+	os->setProperty(-2, OS_TEXT("__instantiable"), false);
+
+	const OS_ClassInfo& classinfo_proto = Prototype::getClassInfoStatic();
+	/* it = classinfos.find(classinfo_proto.classname);
+	if(it == classinfos.end()){
+		OX_ASSERT(false);
+	} */
+
+	os->pushStackValue();
+	os->getGlobal(classinfo_proto.classname);
+	os->setPrototype(classinfo.class_id);
+	os->setProperty();
+}
+
 struct Oxygine
 {
 	static void registerObject(OS * os)
@@ -232,17 +294,51 @@ struct Oxygine
 			{"__get", &Lib::get},
 			{}
 		};
-		registerUserClass<Object>(os, funcs);
+		registerOXClass<Object>(os, funcs);
+	}
+
+	static void registerEvent(OS * os)
+	{
+		struct Lib {
+		};
+
+		OS::FuncDef funcs[] = {
+			def("stopPropagation", &Event::stopPropagation),
+			def("stopImmediatePropagation", &Event::stopImmediatePropagation),
+			{}
+		};
+		registerOXClass<Event, Object>(os, funcs);
+	}
+
+	static void registerTouchEvent(OS * os)
+	{
+		struct Lib {
+			static int get(OS * os, int params, int, int, void*)
+			{
+				return 0;
+			}
+		};
+
+		OS::FuncDef funcs[] = {
+			{}
+		};
+		OS::NumberDef nums[] = {
+			{"CLICK", TouchEvent::CLICK},
+			{"OVER", TouchEvent::OVER},
+			{"OUT", TouchEvent::OUT},
+			{"MOVE", TouchEvent::MOVE},
+			{"TOUCH_DOWN", TouchEvent::TOUCH_DOWN},
+			{"TOUCH_UP", TouchEvent::TOUCH_UP},
+			{"WHEEL_UP", TouchEvent::WHEEL_UP},
+			{"WHEEL_DOWN", TouchEvent::WHEEL_DOWN},
+			{}
+		};
+		registerOXClass<TouchEvent, Event>(os, funcs, nums);
 	}
 
 	static void registerEventDispatcher(OS * os)
 	{
 		struct Lib {
-			void eventCallback(Event *ev)
-			{
-				// int funcId
-			}
-
 			static int addEventListener(OS * os, int params, int, int, void*)
 			{
 				OS_GET_SELF(EventDispatcher*);
@@ -262,35 +358,63 @@ struct Oxygine
 					break;
 
 				case OS_VALUE_TYPE_STRING:
-					{
-						OS::String name = os->toString(-params+0);
-						ev = (eventType)name.string->hash;
-						break;
-					}
+					ev = (eventType)os->toString(-params+0).string->hash; // TODO: change to crc32
+					break;
 
 				default:
 					os->setException("the first argument should be string or number");
 					return 0;
 				}
-				self->addEventListener(ev, CLOSURE((Lib*)funcId, &Lib::eventCallback));
-				return 0;
+				os->pushNumber(self->addEventListener(ev, EventCallback(os, funcId)));
+				return 1;
 			}
 
 			static int removeEventListener(OS * os, int params, int, int, void*)
 			{
-				OS_GET_SELF(Sprite*);
+				OS_GET_SELF(EventDispatcher*);
+				if(params == 1){
+					switch(os->getType(-params+0)){
+					case OS_VALUE_TYPE_NUMBER:
+						self->removeEventListener(os->toInt(-params+0));
+						return 0;
+
+					default:
+						os->setException("argument should be number here");
+						return 0;
+					}
+				}
+				eventType ev;
+				switch(os->getType(-params+0)){
+				case OS_VALUE_TYPE_NUMBER:
+					ev = (eventType)os->toInt(-params+0);
+					break;
+
+				case OS_VALUE_TYPE_STRING:
+					ev = (eventType)os->toString(-params+0).string->hash; // TODO: change to crc32
+					break;
+
+				default:
+					os->setException("the first argument should be string or number here");
+					return 0;
+				}
+				if(!os->isFunction(-params+1)){
+					os->setException("2nd argument must be function");
+					return 0;
+				}
+				int funcId = os->getValueId(-params+1);
+				self->removeEventListener(ev, EventCallback(os, funcId));
 				return 0;
 			}
 		};
 
 		OS::FuncDef funcs[] = {
-			def("removeAllEventListeners", &EventDispatcher::removeAllEventListeners),
 			def("__get@listenersCount", &EventDispatcher::getListenersCount),
 			{"addEventListener", &Lib::addEventListener},
 			{"removeEventListener", &Lib::removeEventListener},
+			def("removeAllEventListeners", &EventDispatcher::removeAllEventListeners),
 			{}
 		};
-		registerUserClass<EventDispatcher, Object>(os, funcs);
+		registerOXClass<EventDispatcher, Object>(os, funcs);
 	}
 
 	static void registerActor(OS * os)
@@ -326,7 +450,7 @@ struct Oxygine
 			def("__set@anchor", (void(Actor::*)(const Vector2 &))&Actor::setAnchor),
 			{}
 		};
-		registerUserClass<Actor, EventDispatcher>(os, funcs);
+		registerOXClass<Actor, EventDispatcher>(os, funcs);
 	}
 
 	static void registerSprite(OS * os)
@@ -352,7 +476,7 @@ struct Oxygine
 			{"setResAnimTest", &Lib::setResAnimTest},
 			{}
 		};
-		registerUserClass<Sprite, Actor>(os, funcs);
+		registerOXClass<Sprite, Actor>(os, funcs);
 	}
 
 	static void registerRootActor(OS * os)
@@ -360,18 +484,35 @@ struct Oxygine
 		OS::FuncDef funcs[] = {
 			{}
 		};
-		registerUserClass<RootActor, Actor>(os, funcs);
+		registerOXClass<RootActor, Actor>(os, funcs);
 	}
 
 	static OxygineOS * os;
 
+	/*
+	static int stackOrder;
+	static void checkStackOrder(int prev = 0)
+	{
+		if(prev == 0){
+			checkStackOrder((intptr_t)&prev);
+		}else{
+			int cur = 0;
+			stackOrder = (intptr_t)&cur < prev;
+		}
+	}
+	*/
+
 	static void init()
 	{
+		// checkStackOrder();
+
 		os = OS::create(new OxygineOS());
 
 		initDateTimeExtension(os);
 
 		registerObject(os);
+		registerEvent(os);
+		registerTouchEvent(os);
 		registerEventDispatcher(os);
 		registerActor(os);
 		registerSprite(os);
@@ -395,8 +536,23 @@ struct Oxygine
 }; // struct Oxygine
 
 OxygineOS * Oxygine::os;
+// int Oxygine::stackOrder;
 
 } // namespace ObjectScript
+
+
+void callObjectScriptFunction(ObjectScript::OS * os, int func_id, Event * ev)
+{
+	int is_stack_event = !ev->_ref_counter; // ((intptr_t)ev < (intptr_t)&ev) ^ ObjectScript::Oxygine::stackOrder;
+	if(is_stack_event){
+		// ev = ev->clone();
+	}
+	os->pushValueById(func_id);
+	OX_ASSERT(os->isFunction());
+	os->pushGlobals(); // this
+	pushCtypeValue(os, ev);
+	os->call(1);
+}
 
 void example_preinit()
 {

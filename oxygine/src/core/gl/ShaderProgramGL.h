@@ -7,6 +7,8 @@ namespace oxygine
 	class ShaderProgramGL: public ShaderProgram
 	{
 	public:
+		OS_DECLARE_CLASSINFO(ShaderProgramGL);
+
 		ShaderProgramGL();
 		~ShaderProgramGL();
 

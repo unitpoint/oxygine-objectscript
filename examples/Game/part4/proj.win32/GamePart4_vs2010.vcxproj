@@ -40,7 +40,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>../objectscript/src;$(IncludePath)</IncludePath>
+    <IncludePath>../../../../objectscript/src;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -51,7 +51,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;OX_WITH_OBJECTSCRIPT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>../../../..//oxygine/src;../../../../..//SDL/include;../../../..//oxygine/third_party/win32/pthreads/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -101,9 +101,9 @@
     <ClCompile Include="../src/entry_point.cpp" />
     <ClCompile Include="../src/example.cpp" />
     <ClCompile Include="../src/res.cpp" />
-    <ClCompile Include="..\objectscript\src\ext-datetime\os-datetime.cpp" />
-    <ClCompile Include="..\objectscript\src\objectscript.cpp" />
-    <ClCompile Include="..\objectscript\src\os-heap.cpp" />
+    <ClCompile Include="..\..\..\..\objectscript\src\ext-datetime\os-datetime.cpp" />
+    <ClCompile Include="..\..\..\..\objectscript\src\objectscript.cpp" />
+    <ClCompile Include="..\..\..\..\objectscript\src\os-heap.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="../src/Enemy.h" />

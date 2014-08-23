@@ -123,6 +123,8 @@ namespace oxygine
 		class fileHandleSTD:public fileHandle
 		{
 		public:
+			OS_DECLARE_CLASSINFO(fileHandleSTD);
+
 			fileHandleSTD(oxHandle* fh):_handle(fh)
 			{
 			}

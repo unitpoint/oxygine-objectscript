@@ -7,6 +7,7 @@ DECLARE_SMART(Scene, spScene);
 class Scene: public EventDispatcher
 {
 public:
+	OS_DECLARE_CLASSINFO(Scene);
 	Scene();
 
 	//declare own Event type

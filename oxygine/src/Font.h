@@ -28,6 +28,8 @@ namespace oxygine
 	class Font: public ObjectBase
 	{
 	public:
+		OS_DECLARE_CLASSINFO(Font);
+
 		Font();
 		~Font();
 

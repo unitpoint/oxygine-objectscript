@@ -5,6 +5,7 @@ DECLARE_SMART(GameMenu, spGameMenu);
 class GameMenu: public Scene
 {
 public:
+	OS_DECLARE_CLASSINFO(GameMenu);
 	static spGameMenu instance;
 
 	GameMenu();

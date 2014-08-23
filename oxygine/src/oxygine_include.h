@@ -79,4 +79,75 @@ namespace oxygine{namespace log{void error(const char *format, ...);}}
 #define OXYGINE_DEPRECATED
 #endif
 
+#ifdef OX_WITH_OBJECTSCRIPT
+
+#include <objectscript.h>
+
+struct OS_ClassInfo
+{
+	const char * classname;
+	int class_id;
+	int instance_id;
+
+	/*
+	OS_ClassInfo()
+	{
+		classname = "";
+		class_id = 0;
+		instance_id = 0;
+	}
+	
+	OS_ClassInfo(const OS_ClassInfo& info)
+	{
+		classname = info.classname;
+		class_id = info.class_id;
+		instance_id = info.instance_id;
+	}
+	*/
+
+	OS_ClassInfo(
+		const char * classname,
+		int class_id,
+		int instance_id)
+	{
+		this->classname = classname;
+		this->class_id = class_id;
+		this->instance_id = instance_id;
+	}
+};
+
+#define OS_MAKE_STRING(name) #name
+#define OS_CHECK_CLASSNAME(info, type) \
+	if(strcmp(info.classname, OS_MAKE_STRING(type)) != 0){ \
+		OX_ASSERT(false && "Error classname " OS_MAKE_STRING(type)); \
+	}
+
+#define OS_DECLARE_CLASSINFO_STATIC_NAME(type, name) \
+	static const OS_ClassInfo& getClassInfoStatic(){ \
+		static int class_id = (int)(intptr_t)&class_id; \
+		static int instance_id = (int)(intptr_t)&instance_id; \
+		static OS_ClassInfo class_info(name, class_id, instance_id); \
+		return class_info; \
+	}
+
+#define OS_DECLARE_CLASSINFO_STATIC(type) \
+	OS_DECLARE_CLASSINFO_STATIC_NAME(type, #type)
+
+#define OS_DECLARE_CLASSINFO(type) \
+	OS_DECLARE_CLASSINFO_STATIC(type) \
+	virtual const OS_ClassInfo& getClassInfo(){ \
+		const OS_ClassInfo& info = getClassInfoStatic(); \
+		OS_CHECK_CLASSNAME(info, type); \
+		return info; \
+	}
+
+// #define OS_CLASSINFO_OF(type) type :: getClassInfoStatic()
+
+#else // OX_WITH_OBJECTSCRIPT
+
+#define OS_DECLARE_CLASSINFO_STATIC(type)
+#define OS_DECLARE_CLASSINFO(type)
+
+#endif // OX_WITH_OBJECTSCRIPT
+
 #endif //OXYGINE_INCLUDE
