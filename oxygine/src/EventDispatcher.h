@@ -101,7 +101,7 @@ namespace oxygine
 
 		EventCallback(ObjectScript::OS * _os, int _func_id)
 		{
-			OX_ASSERT(os && func_id);
+			OX_ASSERT(_os && _func_id);
 			p_this = NULL;
 			os = _os->retain();
 			os->retainValueById(func_id = _func_id);
