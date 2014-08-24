@@ -226,6 +226,7 @@ struct CtypeEnumNumber
 
 OS_DECL_CTYPE_ENUM(error_policy);
 OS_DECL_CTYPE_ENUM(Tween::EASE);
+OS_DECL_CTYPE_ENUM(blend_mode);
 
 // =====================================================================
 
@@ -236,16 +237,20 @@ struct CtypeValue<Vector2>
 {
 	typedef Vector2 type;
 
-	static bool isValid(const Vector2&){ return true; }
+	static bool isValid(const type&){ return true; }
 
 	// static type to(const b2Vec2& val){ return (type)val; }
-	static Vector2 def(ObjectScript::OS * os){ return Vector2(0, 0); }
-	static Vector2 getArg(ObjectScript::OS * os, int offs)
+	static type def(ObjectScript::OS * os){ return type(0, 0); }
+	static type getArg(ObjectScript::OS * os, int offs)
 	{
 		if(os->isObject(offs)){
 			float x = (os->getProperty(offs, "x"), os->popFloat());
 			float y = (os->getProperty(offs, "y"), os->popFloat());
-			return Vector2(x, y);
+			return type(x, y);
+		}
+		OS_NUMBER v;
+		if(os->isNumber(offs, &v)){
+			return type(v, v);
 		}
 #if 0
 		if(os->isArray(offs)){
@@ -259,20 +264,74 @@ struct CtypeValue<Vector2>
 			os->getProperty();
 			float y = os->popFloat();
 
-			return Vector2(x, y);
+			return type(x, y);
 		}
 #endif
-		os->setException("vec2 required");
-		return Vector2(0, 0);
+		os->setException("vec2 or number required");
+		return type(0, 0);
 	}
 
-	static void push(ObjectScript::OS * os, const Vector2& p)
+	static void push(ObjectScript::OS * os, const type& p)
 	{
 #if 1
 		os->getGlobal("vec2");
 		os->pushGlobals();
 		os->pushNumber(p.x);
 		os->pushNumber(p.y);
+		os->call(2, 1);
+#else
+		os->newObject();
+	
+		os->pushStackValue();
+		os->pushNumber(p.x);
+		os->setProperty("x", false);
+				
+		os->pushStackValue();
+		os->pushNumber(p.y);
+		os->setProperty("y", false);
+#endif
+	}
+};
+
+// =====================================================================
+
+OS_DECL_CTYPE(Color);
+
+template <>
+struct CtypeValue<Color>
+{
+	typedef Color type;
+
+	static bool isValid(const type&){ return true; }
+
+	// static type to(const b2Vec2& val){ return (type)val; }
+	static type def(ObjectScript::OS * os){ return type(0, 0, 0, 0); }
+	static type getArg(ObjectScript::OS * os, int offs)
+	{
+		if(os->isObject(offs)){
+			unsigned char r = (unsigned char)scalar::clamp((os->getProperty(offs, "r"), os->popFloat(0.0f)) * 255.0f, 0.0f, 255.0f);
+			unsigned char g = (unsigned char)scalar::clamp((os->getProperty(offs, "g"), os->popFloat(0.0f)) * 255.0f, 0.0f, 255.0f);
+			unsigned char b = (unsigned char)scalar::clamp((os->getProperty(offs, "b"), os->popFloat(0.0f)) * 255.0f, 0.0f, 255.0f);
+			unsigned char a = (unsigned char)a = scalar::clamp((os->getProperty(offs, "a"), os->popFloat(1.0f)) * 255.0f, 0.0f, 255.0f);
+			return type(r, g, b, a);
+		}
+		OS_NUMBER v;
+		if(os->isNumber(offs, &v)){
+			return type(v, v, v);
+		}
+		os->setException("Color or number required");
+		return type(0, 0, 0, 0);
+	}
+
+	static void push(ObjectScript::OS * os, const type& color)
+	{
+#if 1
+		os->getGlobal("Color");
+		os->pushGlobals();
+		os->pushNumber(color.r / 255.0);
+		os->pushNumber(color.g / 255.0);
+		os->pushNumber(color.b / 255.0);
+		os->pushNumber(color.a / 255.0);
 		os->call(2, 1);
 #else
 		os->newObject();
@@ -384,16 +443,57 @@ static void registerObject(OS * os)
 			os->pushNumber((intptr_t)self - (intptr_t)other);
 			return 1;
 		}
+
+		static int getName(OS * os, int params, int, int, void*)
+		{
+			OS_GET_SELF(Object*);
+			pushCtypeValue(os, self->getName());
+			return 1;
+		}
+
+		static int setName(OS * os, int params, int, int, void*)
+		{
+			OS_GET_SELF(Object*);
+			self->setName(params > 0 ? os->toString(-params+0).toChar() : "");
+			return 0;
+		}
 	};
 
 	OS::FuncDef funcs[] = {
 		{"__get", &Lib::get},
 		{"__cmp", &Lib::cmp},
+		{"__get@name", &Lib::getName},
+		{"__set@name", &Lib::setName},
 		{}
 	};
 	registerOXClass<Object>(os, funcs);
 }
 static bool __registerObject = addRegFunc(registerObject);
+
+// =====================================================================
+
+OS_DECL_OX_CLASS(Clock);
+static void registerClock(OS * os)
+{
+	struct Lib {
+	};
+
+	OS::FuncDef funcs[] = {
+		DEF_GET(time, Clock, Time),
+		DEF_GET(pauseCounter, Clock, PauseCounter),
+		DEF_PROP(fixedStep, Clock, FixedStep),
+		DEF_PROP(multiplier, Clock, Multiplier),
+		def("pause", &Clock::pause),
+		def("resume", &Clock::resume),
+		def("resetPause", &Clock::resetPause),
+		def("update", &Clock::update),
+		def("doTick", &Clock::doTick),
+		def("dump", &Clock::dump),
+		{}
+	};
+	registerOXClass<Clock, Object>(os, funcs);
+}
+static bool __registerClock = addRegFunc(registerClock);
 
 // =====================================================================
 
@@ -545,6 +645,18 @@ void registerTween(OS * os)
 			return new Tween();
 		} */
 
+		static int addDoneCallback(OS * os, int params, int, int, void*)
+		{
+			OS_GET_SELF(Tween*);
+			if(!os->isFunction(-params+0)){
+				os->setException("function required");
+				return 0;
+			}
+			int funcId = os->getValueId(-params+0);
+			self->addDoneCallback(EventCallback(os, funcId));
+			return 0;
+		}
+
 	};
 	OS::FuncDef funcs[] = {
 		// def("__newinstance", &Lib::__newinstance),
@@ -559,7 +671,12 @@ void registerTween(OS * os)
 		DEF_GET(prevSibling, Tween, PrevSibling),
 		def("__get@isStarted", &Tween::isStarted),
 		def("__get@isDone", &Tween::isDone),
+		{"addDoneCallback", &Lib::addDoneCallback},
 		DEF_SET(detachActor, Tween, DetachActor),
+		// virtual void complete(timeMS deltaTime = std::numeric_limits<int>::max()/2);
+		// void start(Actor &actor);
+		// void update(Actor &actor, const UpdateState &us);	
+		// static float calcEase(EASE ease, float v);
 		{}
 	};
 	OS::NumberDef nums[] = {
@@ -579,6 +696,21 @@ static void registerActor(OS * os)
 		{
 			return new Actor();
 		}
+
+		/* static int setParent(OS * os, int params, int, int, void*)
+		{
+			OS_GET_SELF(Actor*);
+			Actor * p = CtypeValue<Actor*>::getArg(os, -params+0);
+			if(self->getParent() != p){
+				if(self->getParent()){
+					self->detach();
+				}
+			}
+			if(p){
+				self->attachTo(p);
+			}
+			return 0;
+		} */
 
 		static int addTween(OS * os, int params, int, int, void*)
 		{
@@ -619,6 +751,12 @@ static void registerActor(OS * os)
 					duration, loops, twoSides, delay, ease));
 				return 1;
 			}
+			if(name == "scale"){
+				Vector2 dest = CtypeValue<Vector2>::getArg(os, -params+1);
+				pushCtypeValue(os, self->addTween(Actor::TweenScale(dest), 
+					duration, loops, twoSides, delay, ease));
+				return 1;
+			}
 
 			return 0;
 		}
@@ -626,23 +764,125 @@ static void registerActor(OS * os)
 
 	OS::FuncDef funcs[] = {
 		def("__newinstance", &Lib::__newinstance),
-		def("addChild", (void(Actor::*)(Actor*))&Actor::addChild),
-		{"addTween", &Lib::addTween},
 
-		DEF_PROP(x, Actor, X),
-		DEF_PROP(y, Actor, Y),
-		DEF_PROP(width, Actor, Width),
-		DEF_PROP(height, Actor, Height),
-		DEF_PROP(priority, Actor, Priority),
-		DEF_PROP(alpha, Actor, Alpha),
+		DEF_GET(firstChild, Actor, FirstChild),
+		DEF_GET(lastChild, Actor, LastChild),
+		DEF_GET(nextSibling, Actor, NextSibling),
+		DEF_GET(prevSibling, Actor, PrevSibling),
+		def("getDescendant", &Actor::getDescendant),
+		def("getChild", &Actor::getChild),
+		def("getTween", &Actor::getTween),
+		DEF_GET(firstTween, Actor, FirstTween),
+		DEF_GET(lastTween, Actor, LastTween),
 		
 		DEF_GET(anchor, Actor, Anchor),
 		def("__set@anchor", (void(Actor::*)(const Vector2 &))&Actor::setAnchor),
+		def("__get@isAnchorInPixels", &Actor::getIsAnchorInPixels),
+
+		def("__get@pos", &Actor::getPosition),
+		def("__set@pos", (void(Actor::*)(const Vector2 &))&Actor::setPosition),
+		DEF_PROP(x, Actor, X),
+		DEF_PROP(y, Actor, Y),
+		
+		DEF_GET(scale, Actor, Scale),
+		def("__set@scale", (void(Actor::*)(const Vector2 &))&Actor::setScale),
+		DEF_PROP(scaleX, Actor, ScaleX),
+		DEF_PROP(scaleY, Actor, ScaleY),
+
+		DEF_PROP(rotation, Actor, Rotation),
+		DEF_PROP(rotationDegrees, Actor, RotationDegrees),
+
+		DEF_PROP(priority, Actor, Priority),
+		DEF_PROP(visible, Actor, Visible),
+		DEF_PROP(cull, Actor, Cull),
+
+		def("__get@parent", &Actor::getParent),
+		def("__set@parent", (void(Actor::*)(Actor*))&Actor::attachTo),
+
+		DEF_GET(size, Actor, Size),
+		def("__set@size", (void(Actor::*)(const Vector2 &))&Actor::setSize),
+		DEF_PROP(width, Actor, Width),
+		DEF_PROP(height, Actor, Height),
+
+		DEF_PROP(alpha, Actor, Alpha),
+
+		DEF_PROP(clock, Actor, Clock),
+
+		// virtual RectF		getDestRect() const;
+
+		DEF_PROP(inputEnabled, Actor, InputEnabled),
+		DEF_PROP(inputChildrenEnabled, Actor, InputChildrenEnabled),
+		DEF_PROP(childrenRelative, Actor, ChildrenRelative),
+
+		// const Renderer::transform&		getTransform() const;
+		// const Renderer::transform&		getTransformInvert() const;
+		// void setTransform(const AffineTransform &tr);
+
+		DEF_PROP(extendedClickArea, Actor, ExtendedClickArea),
+
+		def("isOn", &Actor::isOn),
+		def("isDescendant", &Actor::isDescendant),
+
+		def("insertChildBefore", &Actor::insertChildBefore),
+		def("insertChildAfter", &Actor::insertChildAfter),
+		def("prependChild", (void(Actor::*)(Actor*))&Actor::prependChild),
+		def("addChild", (void(Actor::*)(Actor*))&Actor::addChild),
+		def("attachTo", (void(Actor::*)(Actor*))&Actor::attachTo),
+		def("removeChild", &Actor::removeChild),
+		def("removeChildren", &Actor::removeChildren),
+
+		def("detach", &Actor::detach),
+
+		def("dispatchEvent", &Actor::dispatchEvent),
+
+		DEF_PROP(pressed, Actor, Pressed),
+		DEF_PROP(overed, Actor, Overed),
+
+		def("updateState", &Actor::updateState),
+
+		{"addTween", &Lib::addTween},
+		def("removeTween", &Actor::removeTween),
+		def("removeTweensByName", &Actor::removeTweensByName),
+		def("removeTweens", &Actor::removeTweens),
+
+		// virtual void update(const UpdateState &us);
+		// virtual void render(const RenderState &rs);
+		// virtual void handleEvent(Event *event);		
+		// virtual void doRender(const RenderState &rs){}
+		// virtual std::string dump(const dumpOptions &opt) const;
+
+		def("global2local", &Actor::global2local),
+		def("local2global", &Actor::local2global),
+
+		// void serialize(serializedata* data);
+		// void deserialize(const deserializedata* data);
 		{}
 	};
 	registerOXClass<Actor, EventDispatcher>(os, funcs);
 }
 static bool __registerActor = addRegFunc(registerActor);
+
+// =====================================================================
+
+OS_DECL_OX_CLASS(VStyleActor);
+static void registerVStyleActor(OS * os)
+{
+	struct Lib {
+		static VStyleActor * __newinstance()
+		{
+			return new VStyleActor();
+		}
+	};
+
+	OS::FuncDef funcs[] = {
+		def("__newinstance", &Lib::__newinstance),
+		DEF_PROP(blendMode, Sprite, BlendMode),
+		DEF_PROP(color, Sprite, Color),
+		{}
+	};
+	registerOXClass<VStyleActor, Actor>(os, funcs);
+}
+static bool __registerVStyleActor = addRegFunc(registerVStyleActor);
 
 // =====================================================================
 
@@ -662,7 +902,7 @@ static void registerSprite(OS * os)
 		DEF_SET(resAnim, Sprite, ResAnim),
 		{}
 	};
-	registerOXClass<Sprite, Actor>(os, funcs);
+	registerOXClass<Sprite, VStyleActor>(os, funcs);
 }
 static bool __registerSprite = addRegFunc(registerSprite);
 
@@ -814,6 +1054,7 @@ void callOSFunction(ObjectScript::OS * os, int func_id, Event * ev)
 	os->pushNull(); // this
 	pushCtypeValue(os, ev);
 	os->call(1);
+	os->handleException();
 }
 
 void example_preinit()
@@ -823,23 +1064,25 @@ void example_preinit()
 
 void example_init()
 {
-	//load resources
-	res::load();
+	if(0){
+		//load resources
+		res::load();
 
-	//create all scenes
-	GameMenu::instance = new GameMenu;
-	GameScene::instance = new GameScene;
-	MainMenuScene::instance = new MainMenuScene;
+		//create all scenes
+		GameMenu::instance = new GameMenu;
+		GameScene::instance = new GameScene;
+		MainMenuScene::instance = new MainMenuScene;
 
-	//show main menu
-	MainMenuScene::instance->show();
+		//show main menu
+		MainMenuScene::instance->show();
+	}
 
 	ObjectScript::Oxygine::run();
 }
 
 void example_update()
 {
-
+	// sleep(15);
 }
 
 void example_destroy()

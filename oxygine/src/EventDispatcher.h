@@ -69,7 +69,7 @@ namespace oxygine
 		OriginEventCallback cb;
 		void * p_this; // used by OX
 
-		ObjectScript::OS * os; // retained
+		ObjectScript::OS * os; // not retained
 		int func_id; // retained
 
 		EventCallback()

@@ -37,7 +37,7 @@ namespace oxygine
 
 	DECLARE_SMART(Actor, spActor);
 
-	typedef char pointer_index;
+	typedef int pointer_index;
 	class PointerState;
 
 	DECLARE_SMART(TouchEvent, spTouchEvent);

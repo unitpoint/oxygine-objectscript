@@ -92,7 +92,7 @@ namespace oxygine
 	class Object: public ref_counter, public ObjectBase
 	{
 	public:
-		OS_DECLARE_CLASSINFO_STATIC_NAME(Object, "OxygineObject"); // name Object is used already by ObjectScript
+		OS_DECLARE_CLASSINFO_STATIC_NAME(Object, "OxygineObject"); // name 'Object' is already used by ObjectScript
 
 		Object(const Object &src);
 		Object(bool assignUniqueID = true);

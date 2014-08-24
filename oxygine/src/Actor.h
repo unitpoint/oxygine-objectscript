@@ -174,8 +174,9 @@ namespace oxygine
 		void setSize(float w, float h);
 		void setWidth(float w);
 		void setHeight(float h);
-		/**Extends actor's clickable area from each side. Affects only to Actor::isOn. Max value is 127, Min Value is -128*/
-		void setExtendedClickArea(char add) {_extendedIsOn = add;}
+		/**Extends actor's clickable area from each side. Affects only to Actor::isOn */
+		void setExtendedClickArea(float add) {_extendedIsOn = add;}
+		float getExtendedClickArea() const { return _extendedIsOn; }
 
 		void setClock(spClock clock);
 
@@ -183,6 +184,7 @@ namespace oxygine
 		void setVisible(bool vis) {_flags &= ~flag_visible; if (vis) _flags |= flag_visible;}
 		/**Enable/Disable culling this actor outside of clip area (use it with ClipRectActor)*/
 		void setCull(bool enable) {_flags &= ~flag_cull; if (enable) _flags |= flag_cull;}
+		bool getCull() const { return (_flags & flag_cull) != 0; }
 		/**Sets transparency. if alpha is 0 actor and children are completely invisible, don't rendering and don't receive events.*/
 		void setAlpha(unsigned char alpha){_alpha = alpha;}
 		/**Enables/Disables input events(touch, mouse) for Actor.*/
@@ -332,7 +334,7 @@ namespace oxygine
 
 
 		unsigned char	_alpha;
-		char	_extendedIsOn;
+		float _extendedIsOn;
 
 		spClock _clock;	
 

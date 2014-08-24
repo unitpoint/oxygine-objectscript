@@ -17,8 +17,9 @@ root.addEventListener(RootActor.DEACTIVATE, function(){
 
 print "root.x: ${root.x}"
 
-var res = Resources()
-res.loadXML("xmls/ui.xml")
+var mainMenuScene = MainMenuScene()
+mainMenuScene.show()
+return;
 
 var actor = Sprite()
 // actor.setResAnimTest("sky")
@@ -38,19 +39,6 @@ actor.addEventListener(TouchEvent.CLICK, function(ev){
 	print "CLICK: ${ev}"
 	ev.stopImmediatePropagation()
 })
-
-Scene = extends EventDispatcher {
-	__construct = function(){
-		@view = null
-		
-	},
-	
-	show = function(){
-		root.addChild(@view)
-		@view.alpha = 0
-		@view.addTween("alpha", 255, 1000)
-	},
-}
 
 GameScene = extends Scene {
 	__construct = function(){

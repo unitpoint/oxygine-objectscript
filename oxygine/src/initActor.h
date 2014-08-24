@@ -61,7 +61,7 @@ namespace oxygine
 		typedef argT<blend_mode, blend_mode, VStyleActor, &VStyleActor::setBlendMode> blend;
 		typedef argT<short, short, Actor, &Actor::setPriority> priority;
 		typedef argT<void*, void*, ObjectBase, &ObjectBase::setUserData> userData;
-		typedef argT<char, char, Actor, &Actor::setExtendedClickArea> extendedClickArea;
+		typedef argT<float, float, Actor, &Actor::setExtendedClickArea> extendedClickArea;
 
 		typedef argT<TextStyle, const TextStyle &, TextField, &TextField::setStyle> style;	
 		typedef argT<std::string, const std::string &, TextField, &TextField::setText> text;	
