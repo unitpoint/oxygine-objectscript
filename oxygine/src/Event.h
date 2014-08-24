@@ -82,6 +82,12 @@ namespace oxygine
 		MouseButton mouseButton;//valid only for TouchUP/Down
 
 		pointer_index index;
+
+		Vector2 getLocalPosition() const { return localPosition; }
+		Vector2 getPosition() const { return position; }
+		float getPressure() const { return pressure; }
+		MouseButton getMouseButton() const { return mouseButton; }
+		pointer_index getIndex() const { return index; }
 	};
 
 }

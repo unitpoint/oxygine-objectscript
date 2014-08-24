@@ -136,9 +136,15 @@ template <class T> struct CtypeOXClass<T*>
 			os->pushNull();
 			return;
 		}
-		val->addRef();
 		const OS_ClassInfo& classinfo = val->getClassInfo();
+		if(val->osValueId){
+			os->pushValueById(val->osValueId);
+			OX_ASSERT(os->isUserdata(classinfo.instance_id, -1, classinfo.class_id));
+			return;
+		}
 		os->pushUserPointer(classinfo.instance_id, val, UserDataDestructor<ttype>::dtor);
+		val->osValueId = os->getValueId();
+		val->addRef();
 		os->pushStackValue();
 		os->getGlobal(classinfo.classname);
 		if(!os->isUserdata(classinfo.class_id, -1)){
@@ -168,9 +174,15 @@ template <class T> struct CtypeOXSmartClass
 			os->pushNull();
 			return;
 		}
-		val->addRef();
 		const OS_ClassInfo& classinfo = val->getClassInfo();
+		if(val->osValueId){
+			os->pushValueById(val->osValueId);
+			OX_ASSERT(os->isUserdata(classinfo.instance_id, -1, classinfo.class_id));
+			return;
+		}
 		os->pushUserPointer(classinfo.instance_id, val.get(), UserDataDestructor<ttype>::dtor);
+		val->osValueId = os->getValueId();
+		val->addRef();
 		os->pushStackValue();
 		os->getGlobal(classinfo.classname);
 		if(!os->isUserdata(classinfo.class_id, -1)){
@@ -188,6 +200,8 @@ template <class T> struct CtypeOXSmartClass
 
 static void releaseOXObject(Object * obj)
 {
+	OX_ASSERT(obj->osValueId);
+	obj->osValueId = 0;
 	obj->releaseRef();
 }
 
@@ -227,6 +241,8 @@ struct CtypeEnumNumber
 OS_DECL_CTYPE_ENUM(error_policy);
 OS_DECL_CTYPE_ENUM(Tween::EASE);
 OS_DECL_CTYPE_ENUM(blend_mode);
+OS_DECL_CTYPE_ENUM(Event::Phase);
+OS_DECL_CTYPE_ENUM(MouseButton);
 
 // =====================================================================
 
@@ -239,7 +255,6 @@ struct CtypeValue<Vector2>
 
 	static bool isValid(const type&){ return true; }
 
-	// static type to(const b2Vec2& val){ return (type)val; }
 	static type def(ObjectScript::OS * os){ return type(0, 0); }
 	static type getArg(ObjectScript::OS * os, int offs)
 	{
@@ -250,7 +265,7 @@ struct CtypeValue<Vector2>
 		}
 		OS_NUMBER v;
 		if(os->isNumber(offs, &v)){
-			return type(v, v);
+			return type((float)v, (float)v);
 		}
 #if 0
 		if(os->isArray(offs)){
@@ -279,6 +294,7 @@ struct CtypeValue<Vector2>
 		os->pushNumber(p.x);
 		os->pushNumber(p.y);
 		os->call(2, 1);
+		os->handleException();
 #else
 		os->newObject();
 	
@@ -295,6 +311,70 @@ struct CtypeValue<Vector2>
 
 // =====================================================================
 
+OS_DECL_CTYPE_NAME(UpdateState, "UpdateState");
+
+template <>
+struct CtypeValue<UpdateState>
+{
+	typedef UpdateState type;
+
+	static bool isValid(const type&){ return true; }
+
+	static type def(ObjectScript::OS * os){ return UpdateState(); }
+	static type getArg(ObjectScript::OS * os, int offs)
+	{
+		if(os->isObject(offs)){
+			UpdateState us;
+			us.time = (os->getProperty(offs, "time"), os->popInt());
+			us.dt = (os->getProperty(offs, "dt"), os->popInt());
+			us.iteration = (os->getProperty(offs, "iteration"), os->popInt());
+			return us;
+		}
+		os->setException("UpdateState required");
+		return type();
+	}
+
+	static void push(ObjectScript::OS * os, const type& p)
+	{
+		os->getGlobal("UpdateState");
+		os->pushGlobals();
+		os->pushNumber(p.time);
+		os->pushNumber(p.dt);
+		os->pushNumber(p.iteration);
+		os->call(3, 1);
+		os->handleException();
+	}
+};
+
+// =====================================================================
+
+OS_DECL_CTYPE_NAME(EventCallback, "EventCallback");
+
+template <>
+struct CtypeValue<EventCallback>
+{
+	typedef EventCallback type;
+
+	static bool isValid(const type& val){ return val; }
+
+	static type def(ObjectScript::OS * os){ return type(); }
+	static type getArg(ObjectScript::OS * os, int offs)
+	{
+		if(os->isFunction(offs)){
+			return type(os, os->getValueId(offs));
+		}
+		os->setException("function required");
+		return type();
+	}
+
+	static void push(ObjectScript::OS * os, const type& p)
+	{
+		os->pushValueById(p.func_id);
+	}
+};
+
+// =====================================================================
+
 OS_DECL_CTYPE(Color);
 
 template <>
@@ -304,7 +384,6 @@ struct CtypeValue<Color>
 
 	static bool isValid(const type&){ return true; }
 
-	// static type to(const b2Vec2& val){ return (type)val; }
 	static type def(ObjectScript::OS * os){ return type(0, 0, 0, 0); }
 	static type getArg(ObjectScript::OS * os, int offs)
 	{
@@ -312,12 +391,13 @@ struct CtypeValue<Color>
 			unsigned char r = (unsigned char)scalar::clamp((os->getProperty(offs, "r"), os->popFloat(0.0f)) * 255.0f, 0.0f, 255.0f);
 			unsigned char g = (unsigned char)scalar::clamp((os->getProperty(offs, "g"), os->popFloat(0.0f)) * 255.0f, 0.0f, 255.0f);
 			unsigned char b = (unsigned char)scalar::clamp((os->getProperty(offs, "b"), os->popFloat(0.0f)) * 255.0f, 0.0f, 255.0f);
-			unsigned char a = (unsigned char)a = scalar::clamp((os->getProperty(offs, "a"), os->popFloat(1.0f)) * 255.0f, 0.0f, 255.0f);
+			unsigned char a = (unsigned char)scalar::clamp((os->getProperty(offs, "a"), os->popFloat(1.0f)) * 255.0f, 0.0f, 255.0f);
 			return type(r, g, b, a);
 		}
 		OS_NUMBER v;
 		if(os->isNumber(offs, &v)){
-			return type(v, v, v);
+			unsigned char a = (unsigned char)scalar::clamp((float)v * 255.0f, 0.0f, 255.0f);
+			return type(a, a, a);
 		}
 		os->setException("Color or number required");
 		return type(0, 0, 0, 0);
@@ -325,7 +405,6 @@ struct CtypeValue<Color>
 
 	static void push(ObjectScript::OS * os, const type& color)
 	{
-#if 1
 		os->getGlobal("Color");
 		os->pushGlobals();
 		os->pushNumber(color.r / 255.0);
@@ -333,17 +412,7 @@ struct CtypeValue<Color>
 		os->pushNumber(color.b / 255.0);
 		os->pushNumber(color.a / 255.0);
 		os->call(2, 1);
-#else
-		os->newObject();
-	
-		os->pushStackValue();
-		os->pushNumber(p.x);
-		os->setProperty("x", false);
-				
-		os->pushStackValue();
-		os->pushNumber(p.y);
-		os->setProperty("y", false);
-#endif
+		os->handleException();
 	}
 };
 
@@ -501,9 +570,19 @@ OS_DECL_OX_CLASS(Event);
 static void registerEvent(OS * os)
 {
 	struct Lib {
+		static Event * __newinstance()
+		{
+			return new Event(0); // makefourcc('U','N','K','N'));
+		}
+
 	};
 
 	OS::FuncDef funcs[] = {
+		def("__newinstance", &Lib::__newinstance),
+		DEF_GET(type, Event, Type),
+		DEF_GET(phase, Event, Phase),
+		DEF_GET(target, Event, Target),
+		DEF_GET(currentTarget, Event, CurrentTarget),
 		def("stopPropagation", &Event::stopPropagation),
 		def("stopImmediatePropagation", &Event::stopImmediatePropagation),
 		{}
@@ -518,13 +597,14 @@ OS_DECL_OX_CLASS(TouchEvent);
 static void registerTouchEvent(OS * os)
 {
 	struct Lib {
-		static int get(OS * os, int params, int, int, void*)
-		{
-			return 0;
-		}
 	};
 
 	OS::FuncDef funcs[] = {
+		DEF_GET(localPosition, TouchEvent, LocalPosition),
+		DEF_GET(position, TouchEvent, Position),
+		DEF_GET(pressure, TouchEvent, Pressure),
+		DEF_GET(mouseButton, TouchEvent, MouseButton),
+		DEF_GET(index, TouchEvent, Index),
 		{}
 	};
 	OS::NumberDef nums[] = {
@@ -541,6 +621,28 @@ static void registerTouchEvent(OS * os)
 	registerOXClass<TouchEvent, Event>(os, funcs, nums);
 }
 static bool __registerTouchEvent = addRegFunc(registerTouchEvent);
+
+// =====================================================================
+
+OS_DECL_OX_CLASS(TweenEvent);
+static void registerTweenEvent(OS * os)
+{
+	struct Lib {
+	};
+
+	OS::FuncDef funcs[] = {
+		DEF_GET(actor, TweenEvent, Actor),
+		DEF_GET(tween, TweenEvent, Tween),
+		DEF_GET(us, TweenEvent, UpdateState),
+		{}
+	};
+	OS::NumberDef nums[] = {
+		{"DONE", TweenEvent::DONE},
+		{}
+	};
+	registerOXClass<TweenEvent, Event>(os, funcs, nums);
+}
+static bool __registerTweenEvent = addRegFunc(registerTweenEvent);
 
 // =====================================================================
 
@@ -619,6 +721,48 @@ static void registerEventDispatcher(OS * os)
 			self->removeEventListener(ev, EventCallback(os, funcId));
 			return 0;
 		}
+
+		static int dispatchEvent(OS * os, int params, int, int, void*)
+		{
+			OS_GET_SELF(EventDispatcher*);
+			if(params < 1){
+				os->setException("Event required");
+				return 0;
+			}
+			Event * ev = CtypeValue<Event*>::getArg(os, -params+0);
+			if(ev){
+				self->dispatchEvent(ev);
+				return 0;
+			}
+			int offs = os->getAbsoluteOffs(-params+0);
+			os->getGlobal("CustomEvent");
+			os->pushGlobals();
+			os->pushStackValue(offs);
+			if(params == 1 || os->isObject(offs)){
+				os->call(1, 1);
+			}else{
+				os->pushStackValue(offs+1);
+				os->call(2, 1);
+			}
+			os->handleException();
+			ev = CtypeValue<Event*>::getArg(os, -1);
+			if(ev){
+				os->getProperty(-1, "type");
+				switch(os->getType(-1)){
+				case OS_VALUE_TYPE_NUMBER:
+					ev->type = (eventType)os->toInt(-params+0);
+					break;
+
+				case OS_VALUE_TYPE_STRING:
+					ev->type = (eventType)os->toString(-params+0).string->hash; // TODO: change to crc32
+					break;
+				}
+				self->dispatchEvent(ev);
+			}else{
+				OX_ASSERT(false);
+			}
+			return 0;
+		}
 	};
 
 	OS::FuncDef funcs[] = {
@@ -627,6 +771,7 @@ static void registerEventDispatcher(OS * os)
 		{"addEventListener", &Lib::addEventListener},
 		{"removeEventListener", &Lib::removeEventListener},
 		def("removeAllEventListeners", &EventDispatcher::removeAllEventListeners),
+		{"dispatchEvent", &Lib::dispatchEvent},
 		{}
 	};
 	registerOXClass<EventDispatcher, Object>(os, funcs);
@@ -645,7 +790,7 @@ void registerTween(OS * os)
 			return new Tween();
 		} */
 
-		static int addDoneCallback(OS * os, int params, int, int, void*)
+		/* static int addDoneCallback(OS * os, int params, int, int, void*)
 		{
 			OS_GET_SELF(Tween*);
 			if(!os->isFunction(-params+0)){
@@ -655,7 +800,7 @@ void registerTween(OS * os)
 			int funcId = os->getValueId(-params+0);
 			self->addDoneCallback(EventCallback(os, funcId));
 			return 0;
-		}
+		} */
 
 	};
 	OS::FuncDef funcs[] = {
@@ -671,7 +816,9 @@ void registerTween(OS * os)
 		DEF_GET(prevSibling, Tween, PrevSibling),
 		def("__get@isStarted", &Tween::isStarted),
 		def("__get@isDone", &Tween::isDone),
-		{"addDoneCallback", &Lib::addDoneCallback},
+		// {"addDoneCallback", &Lib::addDoneCallback},
+		def("addDoneCallback", &Tween::addDoneCallback),
+		DEF_PROP(doneCallback, Tween, DoneCallback),
 		DEF_SET(detachActor, Tween, DetachActor),
 		// virtual void complete(timeMS deltaTime = std::numeric_limits<int>::max()/2);
 		// void start(Actor &actor);
@@ -680,6 +827,16 @@ void registerTween(OS * os)
 		{}
 	};
 	OS::NumberDef nums[] = {
+		{"EASE_LINEAR", Tween::ease_linear},
+		{"EASE_INEXPO", Tween::ease_inExpo},
+		{"EASE_OUTEXPO", Tween::ease_outExpo},
+		{"EASE_INSIN", Tween::ease_inSin},
+		{"EASE_OUTSIN", Tween::ease_outSin},
+		{"EASE_INCUBIC", Tween::ease_inCubic},
+		{"EASE_OUTCUBIC", Tween::ease_outCubic},
+		{"EASE_INOUTBACK", Tween::ease_inOutBack},
+		{"EASE_INBACK", Tween::ease_inBack},
+		{"EASE_OUTBACK", Tween::ease_outBack},
 		{}
 	};
 	registerOXClass<Tween, EventDispatcher>(os, funcs, nums);
@@ -719,20 +876,11 @@ static void registerActor(OS * os)
 				os->setException("argument required");
 				return 0;
 			}
-			os->pushStackValue(-params+0);
-			os->getGlobal("Tween");
-			bool isTween = os->is();
-			os->pop(2);
-			if(isTween){
-				Tween * tween = CtypeValue<Tween*>::getArg(os, -params+0);
-				if(!tween){
-					os->setException("tween argument required here");
-					return 0;
-				}
+			Tween * tween = CtypeValue<Tween*>::getArg(os, -params+0);
+			if(tween){
 				pushCtypeValue(os, self->addTween(tween));
 				return 1;
 			}
-
 			if(params < 3){
 				os->setException("3 arguments required");
 				return 0;
@@ -742,22 +890,50 @@ static void registerActor(OS * os)
 			int loops = params > 3 ? os->toInt(-params+3) : 1;
 			bool twoSides = params > 4 ? os->toInt(-params+4) : false;
 			timeMS delay = params > 5 ? os->toInt(-params+5) : 0;
-			Tween::EASE ease = params > 6 ? (Tween::EASE)os->toInt(-params+5) : Tween::EASE::ease_linear;
+			Tween::EASE ease = params > 6 ? (Tween::EASE)os->toInt(-params+5) : Tween::ease_linear;
 
 			if(name == "alpha"){
-				int dest = os->toInt(-params+1);
-				if(dest < 0) dest = 0; else if(dest > 255) dest = 255;
-				pushCtypeValue(os, self->addTween(Actor::TweenAlpha((unsigned char)dest), 
-					duration, loops, twoSides, delay, ease));
-				return 1;
-			}
-			if(name == "scale"){
-				Vector2 dest = CtypeValue<Vector2>::getArg(os, -params+1);
-				pushCtypeValue(os, self->addTween(Actor::TweenScale(dest), 
+				float dest = os->toFloat(-params+1);
+				if(dest < 0) dest = 0; else if(dest > 1) dest = 1;
+				pushCtypeValue(os, self->addTween(Actor::TweenAlpha((unsigned char)(dest * 255)), 
 					duration, loops, twoSides, delay, ease));
 				return 1;
 			}
 
+#define CASE_OX_TWEEN(prop, type, tween) \
+			if(name == prop){ \
+				type dest = CtypeValue<type>::getArg(os, -params+1); \
+				pushCtypeValue(os, self->addTween(Actor::tween(dest), \
+					duration, loops, twoSides, delay, ease)); \
+				return 1; \
+			}
+			CASE_OX_TWEEN("pos", Vector2, TweenPosition);
+			CASE_OX_TWEEN("x", float, TweenX);
+			CASE_OX_TWEEN("y", float, TweenY);
+			CASE_OX_TWEEN("width", float, TweenWidth);
+			CASE_OX_TWEEN("height", float, TweenHeight);
+			CASE_OX_TWEEN("rotation", float, TweenRotation);
+			CASE_OX_TWEEN("rotationDegrees", float, TweenRotationDegrees);
+			CASE_OX_TWEEN("scale", Vector2, TweenScale);
+			CASE_OX_TWEEN("scaleX", float, TweenScaleX);
+			CASE_OX_TWEEN("scaleY", float, TweenScaleY);
+			CASE_OX_TWEEN("width", float, TweenWidth);
+			return 0;
+		}
+
+		static int getAlpha(OS * os, int params, int, int, void*)
+		{
+			OS_GET_SELF(Actor*);
+			os->pushNumber((float)self->getAlpha() / 255.0f);
+			return 1;
+		}
+
+		static int setAlpha(OS * os, int params, int, int, void*)
+		{
+			OS_GET_SELF(Actor*);
+			float alpha = os->toFloat(-params+0);
+			if(alpha < 0) alpha = 0; else if(alpha > 1) alpha = 1;
+			self->setAlpha((unsigned char)(alpha * 255));
 			return 0;
 		}
 	};
@@ -804,7 +980,9 @@ static void registerActor(OS * os)
 		DEF_PROP(width, Actor, Width),
 		DEF_PROP(height, Actor, Height),
 
-		DEF_PROP(alpha, Actor, Alpha),
+		// DEF_PROP(alpha, Actor, Alpha),
+		{"__get@alpha", &Lib::getAlpha},
+		{"__set@alpha", &Lib::setAlpha},
 
 		DEF_PROP(clock, Actor, Clock),
 

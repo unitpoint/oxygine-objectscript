@@ -4,6 +4,33 @@ vec2 = extends Object {
 		@y = y || @x // numberOf(y || x) || throw "y number required"
 	},
 	
+	clone = function(){
+		return vec2(@x, @y)
+	},
+	
+	normalize = function(){
+		var len = #this
+		if(len > 0){
+			@x /= len
+			@y /= len
+		}
+		return this
+	},
+	
+	normalizeTo = function(newLen){
+		var len = #this
+		if(len > 0){
+			var scale = newLen / len
+			@x *= scale
+			@y *= scale
+		}
+		return this
+	},
+	
+	__len = function(){
+		return math.sqrt(@x*@x + @y*@y)
+	},
+	
 	__add = function(b){
 		b is vec2 && return vec2(@x + b.x, @y + b.y)
 		b = numberOf(b) || throw "number or vec2 required"

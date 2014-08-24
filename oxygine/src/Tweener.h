@@ -105,6 +105,9 @@ namespace oxygine
 
 		Tween *tween;
 		const UpdateState *us;
+
+		Tween * getTween() const { return tween; }
+		UpdateState getUpdateState() const { return us ? *us : UpdateState(); }
 	};
 
 	class UpdateState;
@@ -182,6 +185,7 @@ namespace oxygine
 
 		/**set callback when tween done. Doesn't allocate memory. faster than addDoneCallback*/
 		void setDoneCallback(EventCallback cb);
+		EventCallback getDoneCallback() const;
 
 	protected:
 		void done(Actor &, const UpdateState &us);

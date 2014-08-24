@@ -43,6 +43,11 @@ namespace oxygine
 		_cbDone = cb;
 	}
 
+	EventCallback Tween::getDoneCallback() const
+	{
+		return _cbDone;
+	}
+
 	void Tween::addDoneCallback(EventCallback cb)
 	{
 		addEventListener(TweenEvent::DONE, cb);

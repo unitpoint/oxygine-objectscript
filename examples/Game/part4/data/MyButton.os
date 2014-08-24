@@ -1,10 +1,9 @@
 MyButton = extends Sprite {
 	__construct = function(){
 		super()
-		var self = this
-		@addEventListener(TouchEvent.TOUCH_DOWN, {|ev| self.onTouchDown(ev) })
-		@addEventListener(TouchEvent.TOUCH_UP, {|ev| self.onTouchUp(ev) })
-		@addEventListener(TouchEvent.CLICK, {|ev| self.onClick(ev) })
+		@addEventListener(TouchEvent.TOUCH_DOWN, @onTouchDown.bind(this))
+		@addEventListener(TouchEvent.TOUCH_UP, @onTouchUp.bind(this))
+		@addEventListener(TouchEvent.CLICK, @onClick.bind(this))
 	},
 	
 	onTouchDown = function(ev){

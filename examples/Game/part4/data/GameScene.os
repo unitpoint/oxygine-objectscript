@@ -19,10 +19,15 @@ GameScene = extends Scene {
 			pos = @view.size / 2,
 			parent = @view,	
 		}
-		var self = this
 		btn.addEventListener(TouchEvent.CLICK, {||
-			self.changeScene(MainMenuScene.instance)
-		})
+			@changeScene(MainMenuScene.instance)
+		}.bind(this))
+		
+		var move = Joystick()
+		move.parent = @view
+		move.y = @view.height - move.height
+		
+		print "move.pos: ${move.pos}"
 	},
 }
 

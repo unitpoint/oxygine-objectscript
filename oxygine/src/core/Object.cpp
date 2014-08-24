@@ -247,12 +247,18 @@ namespace oxygine
 #ifdef OX_DEBUG
 		__check = 0xABCDEFAB;
 #endif
+#ifdef OX_WITH_OBJECTSCRIPT
+		osValueId = 0;
+#endif
 	}
 
 	Object::Object(bool assignUniqueID):ObjectBase(assignUniqueID)
 	{
 #ifdef OX_DEBUG
 		__check = 0xABCDEFAB;
+#endif
+#ifdef OX_WITH_OBJECTSCRIPT
+		osValueId = 0;
 #endif
 	}
 #ifdef OX_DEBUG

@@ -97,6 +97,10 @@ namespace oxygine
 		Object(const Object &src);
 		Object(bool assignUniqueID = true);
 
+#ifdef OX_WITH_OBJECTSCRIPT
+		int osValueId;
+#endif
+
 	protected:
 #ifdef OX_DEBUG
 		int __check;

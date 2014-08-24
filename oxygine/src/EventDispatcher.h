@@ -48,6 +48,11 @@ namespace oxygine
 		{
 
 		}
+
+		eventType getType() const { return type; }
+		Phase getPhase() const { return phase; }
+		spEventDispatcher getTarget() const { return target; }
+		spEventDispatcher getCurrentTarget() const { return currentTarget; }
 	};
 
 #ifndef OX_WITH_OBJECTSCRIPT
