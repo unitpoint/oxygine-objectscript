@@ -15253,9 +15253,11 @@ void OS::Core::shutdown()
 	gc_fix_in_progress = false;
 
 	if(values.count > 0){
+		OS_ASSERT(false);
 		int i = 0;
 	}
 	if(values.heads){
+		OS_ASSERT(values.count == 0);
 		free(values.heads);
 		values.heads = NULL;
 		values.head_mask = 0;
@@ -15263,6 +15265,7 @@ void OS::Core::shutdown()
 		values.count = 0;
 	}
 	if(gc_candidate_values.heads){
+		OS_ASSERT(gc_candidate_values.count == 0);
 		free(gc_candidate_values.heads);
 		gc_candidate_values.heads = NULL;
 		gc_candidate_values.head_mask = 0;
@@ -16463,8 +16466,8 @@ void OS::Core::setPrototypeValue(const Value& val, const Value& proto)
 	// case OS_VALUE_TYPE_STRING:
 	case OS_VALUE_TYPE_ARRAY:
 	case OS_VALUE_TYPE_OBJECT:
-	// case OS_VALUE_TYPE_FUNCTION:
-	// case OS_VALUE_TYPE_CFUNCTION:
+	case OS_VALUE_TYPE_FUNCTION:
+	case OS_VALUE_TYPE_CFUNCTION:
 		// OS_ASSERT(OS_VALUE_VARIANT(val).value->prototype && OS_VALUE_VARIANT(val).value->prototype->ref_count > 0);
 		// OS_VALUE_VARIANT(val).value->prototype->ref_count--;
 		setValue(OS_VALUE_VARIANT(val).value->prototype, proto.getGCValue());
@@ -16486,8 +16489,8 @@ void OS::Core::setPrototypeValue(const Value& val, const Value& proto, int userd
 	// case OS_VALUE_TYPE_STRING:
 	case OS_VALUE_TYPE_ARRAY:
 	case OS_VALUE_TYPE_OBJECT:
-	// case OS_VALUE_TYPE_FUNCTION:
-	// case OS_VALUE_TYPE_CFUNCTION:
+	case OS_VALUE_TYPE_FUNCTION:
+	case OS_VALUE_TYPE_CFUNCTION:
 		// OS_ASSERT(OS_VALUE_VARIANT(val).value->prototype && OS_VALUE_VARIANT(val).value->prototype->ref_count > 0);
 		// OS_VALUE_VARIANT(val).value->prototype->ref_count--;
 		setValue(OS_VALUE_VARIANT(val).value->prototype, proto.getGCValue());

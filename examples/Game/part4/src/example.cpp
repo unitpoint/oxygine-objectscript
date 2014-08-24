@@ -15,8 +15,45 @@ class OxygineOS: public ObjectScript::OS
 {
 public:
 
+	typedef std::map<EventCallback*, int> EventCallbacks;
+	EventCallbacks eventCallbacks;
+
 	OxygineOS()
 	{
+	}
+
+	void retainFromEventCallback(EventCallback * cb)
+	{
+		retain();
+		EventCallbacks::iterator it = eventCallbacks.find(cb);
+		if(it != eventCallbacks.end()){
+			OX_ASSERT(false);
+			it->second++;
+		}else{
+			eventCallbacks[cb] = 1;
+		}
+	}
+
+	void releaseFromEventCallback(EventCallback * cb)
+	{
+		EventCallbacks::iterator it = eventCallbacks.find(cb);
+		if(it != eventCallbacks.end()){
+			if(--it->second <= 0){
+				eventCallbacks.erase(it);
+			}
+		}else{
+			OX_ASSERT(false);
+		}
+		release();
+	}
+
+	void resetAllEventCallbacks()
+	{
+		EventCallbacks::iterator it = eventCallbacks.begin();
+		for(; it != eventCallbacks.end();){
+			it->first->reset();
+			it = eventCallbacks.begin();
+		}
 	}
 
 	virtual bool isFileExist(const OS_CHAR * filename)
@@ -149,13 +186,18 @@ template <class T> struct CtypeOXSmartClass
 #define OS_DECL_OX_CLASS_NAME(type, name) \
 	OS_DECL_CTYPE_NAME(type, name); */
 
+static void releaseOXObject(Object * obj)
+{
+	obj->releaseRef();
+}
+
 #define OS_DECL_OX_CLASS(type) \
 	template <> struct CtypeName<type> { static const OS_CHAR * getName(){ return type::getClassInfoStatic().classname; } }; \
 	template <> struct CtypeName< intrusive_ptr<type> > { static const OS_CHAR * getName(){ return type::getClassInfoStatic().classname; } }; \
 	template <> struct CtypeValue<type*>: public CtypeOXClass<type*>{}; \
 	template <> struct CtypeValue< intrusive_ptr<type> >: public CtypeOXSmartClass< intrusive_ptr<type> >{}; \
 	template <> struct CtypeValue< intrusive_ptr<type>& >: public CtypeOXSmartClass< intrusive_ptr<type> >{}; \
-	template <> struct UserObjectDestructor<type>{ static void dtor(type * p){ p->releaseRef(); } };
+	template <> struct UserObjectDestructor<type>{ static void dtor(type * p){ releaseOXObject(p); } };
 
 // =====================================================================
 
@@ -181,8 +223,6 @@ struct CtypeEnumNumber
 #define OS_DECL_CTYPE_ENUM(type) \
 	OS_DECL_CTYPE(type); \
 	template <> struct CtypeValue<type>: public CtypeEnumNumber<type> {}
-
-// =====================================================================
 
 OS_DECL_CTYPE_ENUM(error_policy);
 OS_DECL_CTYPE_ENUM(Tween::EASE);
@@ -495,6 +535,42 @@ static bool __registerEventDispatcher = addRegFunc(registerEventDispatcher);
 
 // =====================================================================
 
+OS_DECL_OX_CLASS(Tween);
+void registerTween(OS * os)
+{
+	struct Lib
+	{
+		/* static Tween * __newinstance()
+		{
+			return new Tween();
+		} */
+
+	};
+	OS::FuncDef funcs[] = {
+		// def("__newinstance", &Lib::__newinstance),
+		DEF_PROP(loops, Tween, Loops),
+		DEF_GET(duration, Tween, Duration),
+		DEF_PROP(ease, Tween, Ease),
+		DEF_PROP(delay, Tween, Delay),
+		DEF_PROP(client, Tween, Client),
+		DEF_GET(percent, Tween, Percent),
+		DEF_PROP(dataObject, Tween, DataObject),
+		DEF_GET(nextSibling, Tween, NextSibling),
+		DEF_GET(prevSibling, Tween, PrevSibling),
+		def("__get@isStarted", &Tween::isStarted),
+		def("__get@isDone", &Tween::isDone),
+		DEF_SET(detachActor, Tween, DetachActor),
+		{}
+	};
+	OS::NumberDef nums[] = {
+		{}
+	};
+	registerOXClass<Tween, EventDispatcher>(os, funcs, nums);
+}
+static bool __registerTween = addRegFunc(registerTween);
+
+// =====================================================================
+
 OS_DECL_OX_CLASS(Actor);
 static void registerActor(OS * os)
 {
@@ -516,7 +592,12 @@ static void registerActor(OS * os)
 			bool isTween = os->is();
 			os->pop(2);
 			if(isTween){
-				os->pushStackValue(-params+0);
+				Tween * tween = CtypeValue<Tween*>::getArg(os, -params+0);
+				if(!tween){
+					os->setException("tween argument required here");
+					return 0;
+				}
+				pushCtypeValue(os, self->addTween(tween));
 				return 1;
 			}
 
@@ -573,19 +654,10 @@ static void registerSprite(OS * os)
 		{
 			return new Sprite();
 		}
-
-		static int setResAnimTest(OS * os, int params, int, int, void*)
-		{
-			OS_GET_SELF(Sprite*);
-			OS::String name = os->toString(-params+0);
-			self->setResAnim(res::ui.getResAnim(name.toChar()));
-			return 0;
-		}
 	};
 
 	OS::FuncDef funcs[] = {
 		def("__newinstance", &Lib::__newinstance),
-		{"setResAnimTest", &Lib::setResAnimTest},
 		def("setResAnim", &Sprite::setResAnim),
 		DEF_SET(resAnim, Sprite, ResAnim),
 		{}
@@ -682,42 +754,6 @@ static bool __registerResources = addRegFunc(registerResources);
 
 // =====================================================================
 
-OS_DECL_OX_CLASS(Tween);
-void registerTween(OS * os)
-{
-	struct Lib
-	{
-		/* static Tween * __newinstance()
-		{
-			return new Tween();
-		} */
-
-	};
-	OS::FuncDef funcs[] = {
-		// def("__newinstance", &Lib::__newinstance),
-		DEF_PROP(loops, Tween, Loops),
-		DEF_GET(duration, Tween, Duration),
-		DEF_PROP(ease, Tween, Ease),
-		DEF_PROP(delay, Tween, Delay),
-		DEF_PROP(client, Tween, Client),
-		DEF_GET(percent, Tween, Percent),
-		DEF_PROP(dataObject, Tween, DataObject),
-		DEF_GET(nextSibling, Tween, NextSibling),
-		DEF_GET(prevSibling, Tween, PrevSibling),
-		def("__get@isStarted", &Tween::isStarted),
-		def("__get@isDone", &Tween::isDone),
-		DEF_SET(detachActor, Tween, DetachActor),
-		{}
-	};
-	OS::NumberDef nums[] = {
-		{}
-	};
-	registerOXClass<Tween, EventDispatcher>(os, funcs, nums);
-}
-static bool __registerTween = addRegFunc(registerTween);
-
-// =====================================================================
-
 static OxygineOS * os;
 
 struct Oxygine
@@ -737,6 +773,8 @@ struct Oxygine
 
 	static void shutdown()
 	{
+		os->resetAllEventCallbacks();
+		// os->gcFull();
 		os->release();
 	}
 
@@ -753,7 +791,19 @@ struct Oxygine
 
 } // namespace ObjectScript
 
-void callObjectScriptFunction(ObjectScript::OS * os, int func_id, Event * ev)
+void retainOSEventCallback(ObjectScript::OS * os, EventCallback * cb)
+{
+	OX_ASSERT(dynamic_cast<OxygineOS*>(os));
+	dynamic_cast<OxygineOS*>(os)->retainFromEventCallback(cb);
+}
+
+void releaseOSEventCallback(ObjectScript::OS * os, EventCallback * cb)
+{
+	OX_ASSERT(dynamic_cast<OxygineOS*>(os));
+	dynamic_cast<OxygineOS*>(os)->releaseFromEventCallback(cb);
+}
+
+void callOSFunction(ObjectScript::OS * os, int func_id, Event * ev)
 {
 	int is_stack_event = !ev->_ref_counter; // ((intptr_t)ev < (intptr_t)&ev) ^ ObjectScript::Oxygine::stackOrder;
 	if(is_stack_event){

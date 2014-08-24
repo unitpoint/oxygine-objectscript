@@ -93,7 +93,7 @@ namespace oxygine
 			func_id = b.func_id;
 			if(func_id){
 				OX_ASSERT(os);
-				os->retain();
+				retainOS(os);
 				os->retainValueById(func_id);
 				OX_ASSERT(checkFunctionById());
 			}
@@ -103,7 +103,7 @@ namespace oxygine
 		{
 			OX_ASSERT(_os && _func_id);
 			p_this = NULL;
-			os = _os->retain();
+			os = retainOS(_os); 
 			os->retainValueById(func_id = _func_id);
 			OX_ASSERT(checkFunctionById());
 		}
@@ -113,8 +113,25 @@ namespace oxygine
 			if(func_id){
 				OX_ASSERT(os);
 				os->releaseValueById(func_id);
-				os->release();
+				releaseOS(os);
 			}
+		}
+
+		ObjectScript::OS * retainOS(ObjectScript::OS * os)
+		{
+			OX_ASSERT(os);
+			extern void retainOSEventCallback(ObjectScript::OS*, EventCallback*);
+			retainOSEventCallback(os, this);
+			// os->retain();
+			return os;
+		}
+
+		void releaseOS(ObjectScript::OS * os)
+		{
+			OX_ASSERT(os);
+			extern void releaseOSEventCallback(ObjectScript::OS*, EventCallback*);
+			releaseOSEventCallback(os, this);
+			// os->release();
 		}
 
 		EventCallback& operator=(const EventCallback& b)
@@ -125,28 +142,44 @@ namespace oxygine
 
 			int old_func_id = func_id;
 			ObjectScript::OS * old_os = os;
-			if(b.func_id){
-				OX_ASSERT(b.os);
-				os = b.os->retain();
-				os->retainValueById(func_id = b.func_id);
+			func_id = b.func_id;
+			os = b.os;
+			if(func_id){
+				OX_ASSERT(os);
+				retainOS(os); // ->retain();
+				os->retainValueById(func_id);
 				OX_ASSERT(checkFunctionById());
 			}
 			if(old_func_id){
 				OX_ASSERT(old_os);
 				old_os->releaseValueById(old_func_id);
-				old_os->release();
+				releaseOS(old_os);
 			}
 			return *this;
 		}
+
+		void reset()
+		{
+			cb = OriginEventCallback();
+			p_this = NULL;
+			if(func_id){
+				OX_ASSERT(os);
+				os->releaseValueById(func_id);
+				releaseOS(os);
+			}
+			func_id = 0;
+			os = NULL;
+		}
 		
-		void operator()(Event *ev)
+		void operator()(Event *ev) // const
 		{
 			if(func_id){
 				OX_ASSERT(os && !cb);
-				extern void callObjectScriptFunction(ObjectScript::OS*, int, Event*);
-				callObjectScriptFunction(os, func_id, ev);
+				extern void callOSFunction(ObjectScript::OS*, int, Event*);
+				callOSFunction(os, func_id, ev);
 			}else{
 				OX_ASSERT(!os);
+				// OriginEventCallback cb = this->cb;
 				cb(ev);
 			}
 		}

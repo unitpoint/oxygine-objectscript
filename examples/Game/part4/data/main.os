@@ -4,6 +4,9 @@ print "[start] ${DateTime.now()}"
 require "std.os"
 require "mathlib.os"
 
+// Sprite()
+// return;
+
 root.addEventListener(RootActor.ACTIVATE, function(){
 	print "RootActor.ACTIVATE"
 })
