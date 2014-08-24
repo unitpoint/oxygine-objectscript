@@ -17,8 +17,8 @@ root.addEventListener(RootActor.DEACTIVATE, function(){
 
 print "root.x: ${root.x}"
 
-var mainMenuScene = MainMenuScene()
-mainMenuScene.show()
+MainMenuScene.instance.show()
+// GameScene.instance.show()
 return;
 
 var actor = Sprite()

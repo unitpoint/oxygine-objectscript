@@ -175,8 +175,8 @@ namespace oxygine
 		{
 			if(func_id){
 				OX_ASSERT(os && !cb);
-				extern void callOSFunction(ObjectScript::OS*, int, Event*);
-				callOSFunction(os, func_id, ev);
+				extern void callOSEventFunction(ObjectScript::OS*, int, Event*);
+				callOSEventFunction(os, func_id, ev);
 			}else{
 				OX_ASSERT(!os);
 				// OriginEventCallback cb = this->cb;

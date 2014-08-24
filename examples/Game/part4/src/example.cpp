@@ -1043,18 +1043,30 @@ void releaseOSEventCallback(ObjectScript::OS * os, EventCallback * cb)
 	dynamic_cast<OxygineOS*>(os)->releaseFromEventCallback(cb);
 }
 
-void callOSFunction(ObjectScript::OS * os, int func_id, Event * ev)
+void callOSEventFunction(ObjectScript::OS * os, int func_id, Event * ev)
 {
 	int is_stack_event = !ev->_ref_counter; // ((intptr_t)ev < (intptr_t)&ev) ^ ObjectScript::Oxygine::stackOrder;
 	if(is_stack_event){
 		// ev = ev->clone();
+		ev->_ref_counter++;
 	}
+	
 	os->pushValueById(func_id);
 	OX_ASSERT(os->isFunction());
 	os->pushNull(); // this
 	pushCtypeValue(os, ev);
+	int eventId = os->getValueId();
 	os->call(1);
 	os->handleException();
+	
+	if(is_stack_event){
+		os->pushValueById(eventId);
+		const OS_ClassInfo& info = Event::getClassInfoStatic();
+		os->clearUserdata(info.instance_id, -1, info.class_id);
+		os->pop();
+
+		ev->_ref_counter--;
+	}
 }
 
 void example_preinit()
@@ -1075,14 +1087,14 @@ void example_init()
 
 		//show main menu
 		MainMenuScene::instance->show();
+	}else{
+		ObjectScript::Oxygine::run();
 	}
-
-	ObjectScript::Oxygine::run();
 }
 
 void example_update()
 {
-	// sleep(15);
+	sleep(15);
 }
 
 void example_destroy()

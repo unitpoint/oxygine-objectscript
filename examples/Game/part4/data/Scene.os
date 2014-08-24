@@ -6,7 +6,7 @@ Scene = extends EventDispatcher {
 	},
 	
 	changeScene = function(next){
-		hide()
+		@hide()
 		next.show()
 	},
 	

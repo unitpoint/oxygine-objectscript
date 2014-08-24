@@ -15616,6 +15616,9 @@ void OS::Core::clearValue(GCValue * val)
 {
 	OS_ASSERT(val->value_id);
 	switch(val->type){
+	case OS_VALUE_TYPE_UNKNOWN:
+		return;
+
 	case OS_VALUE_TYPE_NULL:
 	case OS_VALUE_TYPE_BOOL:
 	case OS_VALUE_TYPE_NUMBER:
@@ -18181,7 +18184,7 @@ void OS::clearUserdata(int crc, int offs, int prototype_crc)
 	case OS_VALUE_TYPE_USERDATA:
 	case OS_VALUE_TYPE_USERPTR:
 		if(OS_VALUE_VARIANT(val).userdata->crc == crc){ // && val.v.userdata->ptr){
-			core->triggerValueDestructor(OS_VALUE_VARIANT(val).value);
+			// core->triggerValueDestructor(OS_VALUE_VARIANT(val).value);
 			core->clearValue(OS_VALUE_VARIANT(val).value);
 			// val.v.userdata->ptr = NULL;
 			return;
@@ -18189,7 +18192,7 @@ void OS::clearUserdata(int crc, int offs, int prototype_crc)
 		if(prototype_crc && OS_VALUE_VARIANT(val).userdata->prototype 
 			&& core->isValueOfUserdata(OS_VALUE_VARIANT(val).userdata->prototype, prototype_crc))
 		{
-			core->triggerValueDestructor(OS_VALUE_VARIANT(val).value);
+			// core->triggerValueDestructor(OS_VALUE_VARIANT(val).value);
 			core->clearValue(OS_VALUE_VARIANT(val).value);
 			return;
 		}
