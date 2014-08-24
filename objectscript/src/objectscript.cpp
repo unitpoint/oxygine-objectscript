@@ -16458,8 +16458,8 @@ void OS::Core::pushPrototypeValue(const Value& val)
 void OS::Core::setPrototypeValue(const Value& val, const Value& proto)
 {
 	switch(OS_VALUE_TYPE(val)){
-	// case OS_VALUE_TYPE_USERDATA:
-	// case OS_VALUE_TYPE_USERPTR:
+	case OS_VALUE_TYPE_USERDATA:
+	case OS_VALUE_TYPE_USERPTR:
 	// case OS_VALUE_TYPE_STRING:
 	case OS_VALUE_TYPE_ARRAY:
 	case OS_VALUE_TYPE_OBJECT:

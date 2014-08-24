@@ -337,7 +337,32 @@ function String.switchToIconv(){
 	String.__len = String.lenIconv
 	String.find = String.findIconv
 	String.sub = String.subIconv
-}/*	
+}
+
+var originExtends = __extends
+function __extends(proto, newClass){
+	newClass = originExtends(proto, newClass)
+	if(typeOf(proto) === "userdata" && !newClass.getProperty("__newinstance")){
+		function newClass.__newinstance(){
+			var obj = proto.__newinstance()
+			obj.prototype = this
+			__initnewinstance(obj)
+			obj.__construct.apply(obj, arguments)
+			return obj
+		}
+	}
+	// print "extends: ${newClass} from ${newClass.prototype}"
+	return newClass
+}
+
+function Object.attrs(attrs){
+	for(var name, value in attrs){
+		this[name] = value
+	}
+	return this
+}
+
+/*	
 url || throw "url module required"
 
 function url.buildQuery(p, amp){

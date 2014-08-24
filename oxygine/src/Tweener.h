@@ -111,11 +111,12 @@ namespace oxygine
 	
 
 	DECLARE_SMART(Tween, spTween);
-
 	class Tween: public EventDispatcher, public intrusive_list_item<spTween>
 	{
 		typedef intrusive_list_item<spTween> intr_list;
 	public:
+		OS_DECLARE_CLASSINFO(Tween)
+
 		enum EASE
 		{
 			ease_unknown,

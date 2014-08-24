@@ -145,20 +145,47 @@ template <class T> struct CtypeOXSmartClass
 	}
 };
 
-#define OS_DECL_OX_CLASS(type) OS_DECL_OX_CLASS_NAME(type, #type)
+/* OS_DECL_OX_CLASS_NAME(type, #type)
 #define OS_DECL_OX_CLASS_NAME(type, name) \
-	OS_DECL_CTYPE_NAME(type, name); \
+	OS_DECL_CTYPE_NAME(type, name); */
+
+#define OS_DECL_OX_CLASS(type) \
+	template <> struct CtypeName<type> { static const OS_CHAR * getName(){ return type::getClassInfoStatic().classname; } }; \
+	template <> struct CtypeName< intrusive_ptr<type> > { static const OS_CHAR * getName(){ return type::getClassInfoStatic().classname; } }; \
 	template <> struct CtypeValue<type*>: public CtypeOXClass<type*>{}; \
 	template <> struct CtypeValue< intrusive_ptr<type> >: public CtypeOXSmartClass< intrusive_ptr<type> >{}; \
+	template <> struct CtypeValue< intrusive_ptr<type>& >: public CtypeOXSmartClass< intrusive_ptr<type> >{}; \
 	template <> struct UserObjectDestructor<type>{ static void dtor(type * p){ p->releaseRef(); } };
 
-OS_DECL_OX_CLASS_NAME(Object, "OxygineObject");
-OS_DECL_OX_CLASS(Event);
-OS_DECL_OX_CLASS(TouchEvent);
-OS_DECL_OX_CLASS(EventDispatcher);
-OS_DECL_OX_CLASS(Actor);
-OS_DECL_OX_CLASS(Sprite);
-OS_DECL_OX_CLASS(RootActor);
+// =====================================================================
+
+template <class T>
+struct CtypeEnumNumber
+{
+	typedef typename RemoveConst<T>::type type;
+
+	static bool isValid(type){ return true; }
+
+	static type def(ObjectScript::OS*){ return type(); }
+	static type getArg(ObjectScript::OS * os, int offs)
+	{
+		return (type)(int)os->toNumber(offs); // enum can't be converted to double so use int convert before
+	}
+
+	static void push(ObjectScript::OS * os, const type& val)
+	{
+		os->pushNumber((OS_NUMBER)val);
+	}
+};
+
+#define OS_DECL_CTYPE_ENUM(type) \
+	OS_DECL_CTYPE(type); \
+	template <> struct CtypeValue<type>: public CtypeEnumNumber<type> {}
+
+// =====================================================================
+
+OS_DECL_CTYPE_ENUM(error_policy);
+OS_DECL_CTYPE_ENUM(Tween::EASE);
 
 // =====================================================================
 
@@ -221,8 +248,7 @@ struct CtypeValue<Vector2>
 	}
 };
 
-// typedef std::map<std::string, OS_ClassInfo> OS_ClassInfos;
-// OS_ClassInfos classinfos;
+// =====================================================================
 
 template <class T>
 void registerOXClass(ObjectScript::OS * os, const ObjectScript::OS::FuncDef * list, const ObjectScript::OS::NumberDef * numbers = NULL, bool instantiable = true)
@@ -276,247 +302,437 @@ void registerOXClass(ObjectScript::OS * os, const ObjectScript::OS::FuncDef * li
 	os->setProperty();
 }
 
-struct Oxygine
+// =====================================================================
+
+typedef void(*RegisterFunction)(OS*);
+static std::vector<RegisterFunction> registerFunctions;
+
+static bool addRegFunc(RegisterFunction func)
 {
-	static void registerObject(OS * os)
-	{
-		struct Lib {
-			static int get(OS * os, int params, int, int, void*)
-			{
-				os->setException(OS::String::format(os, "property \"%s\" not found in \"%s\"", 
-					os->toString(-params+0).toChar(),
-					os->getValueNameOrClassname(-params-1).toChar()));
+	registerFunctions.push_back(func);
+	return true;
+}
+
+#define DEF_GET(prop, type, func_post) \
+	def("__get@" #prop, &type::get ## func_post)
+
+#define DEF_SET(prop, type, func_post) \
+	def("__set@" #prop, &type::set ## func_post)
+
+#define DEF_PROP(prop, type, func_post) \
+	DEF_GET(prop, type, func_post), \
+	DEF_SET(prop, type, func_post)
+
+// =====================================================================
+
+OS_DECL_OX_CLASS(Object);
+static void registerObject(OS * os)
+{
+	struct Lib {
+		static int get(OS * os, int params, int, int, void*)
+		{
+			os->setException(OS::String::format(os, "property \"%s\" not found in \"%s\"", 
+				os->toString(-params+0).toChar(),
+				os->getValueNameOrClassname(-params-1).toChar()));
+			return 0;
+		}
+
+		static int cmp(OS * os, int params, int, int, void*)
+		{
+			OS_GET_SELF(Object*);
+			Object * other = CtypeValue<Object*>::getArg(os, -params+0);
+			os->pushNumber((intptr_t)self - (intptr_t)other);
+			return 1;
+		}
+	};
+
+	OS::FuncDef funcs[] = {
+		{"__get", &Lib::get},
+		{"__cmp", &Lib::cmp},
+		{}
+	};
+	registerOXClass<Object>(os, funcs);
+}
+static bool __registerObject = addRegFunc(registerObject);
+
+// =====================================================================
+
+OS_DECL_OX_CLASS(Event);
+static void registerEvent(OS * os)
+{
+	struct Lib {
+	};
+
+	OS::FuncDef funcs[] = {
+		def("stopPropagation", &Event::stopPropagation),
+		def("stopImmediatePropagation", &Event::stopImmediatePropagation),
+		{}
+	};
+	registerOXClass<Event, Object>(os, funcs);
+}
+static bool __registerEvent = addRegFunc(registerEvent);
+
+// =====================================================================
+
+OS_DECL_OX_CLASS(TouchEvent);
+static void registerTouchEvent(OS * os)
+{
+	struct Lib {
+		static int get(OS * os, int params, int, int, void*)
+		{
+			return 0;
+		}
+	};
+
+	OS::FuncDef funcs[] = {
+		{}
+	};
+	OS::NumberDef nums[] = {
+		{"CLICK", TouchEvent::CLICK},
+		{"OVER", TouchEvent::OVER},
+		{"OUT", TouchEvent::OUT},
+		{"MOVE", TouchEvent::MOVE},
+		{"TOUCH_DOWN", TouchEvent::TOUCH_DOWN},
+		{"TOUCH_UP", TouchEvent::TOUCH_UP},
+		{"WHEEL_UP", TouchEvent::WHEEL_UP},
+		{"WHEEL_DOWN", TouchEvent::WHEEL_DOWN},
+		{}
+	};
+	registerOXClass<TouchEvent, Event>(os, funcs, nums);
+}
+static bool __registerTouchEvent = addRegFunc(registerTouchEvent);
+
+// =====================================================================
+
+OS_DECL_OX_CLASS(EventDispatcher);
+static void registerEventDispatcher(OS * os)
+{
+	struct Lib {
+		static EventDispatcher * __newinstance()
+		{
+			return new EventDispatcher();
+		}
+
+		static int addEventListener(OS * os, int params, int, int, void*)
+		{
+			OS_GET_SELF(EventDispatcher*);
+			if(params < 2){
+				os->setException("two arguments required");
 				return 0;
 			}
-		};
-
-		OS::FuncDef funcs[] = {
-			{"__get", &Lib::get},
-			{}
-		};
-		registerOXClass<Object>(os, funcs);
-	}
-
-	static void registerEvent(OS * os)
-	{
-		struct Lib {
-		};
-
-		OS::FuncDef funcs[] = {
-			def("stopPropagation", &Event::stopPropagation),
-			def("stopImmediatePropagation", &Event::stopImmediatePropagation),
-			{}
-		};
-		registerOXClass<Event, Object>(os, funcs);
-	}
-
-	static void registerTouchEvent(OS * os)
-	{
-		struct Lib {
-			static int get(OS * os, int params, int, int, void*)
-			{
+			if(!os->isFunction(-params+1)){
+				os->setException("2nd argument must be function");
 				return 0;
 			}
-		};
+			int funcId = os->getValueId(-params+1);
+			eventType ev;
+			switch(os->getType(-params+0)){
+			case OS_VALUE_TYPE_NUMBER:
+				ev = (eventType)os->toInt(-params+0);
+				break;
 
-		OS::FuncDef funcs[] = {
-			{}
-		};
-		OS::NumberDef nums[] = {
-			{"CLICK", TouchEvent::CLICK},
-			{"OVER", TouchEvent::OVER},
-			{"OUT", TouchEvent::OUT},
-			{"MOVE", TouchEvent::MOVE},
-			{"TOUCH_DOWN", TouchEvent::TOUCH_DOWN},
-			{"TOUCH_UP", TouchEvent::TOUCH_UP},
-			{"WHEEL_UP", TouchEvent::WHEEL_UP},
-			{"WHEEL_DOWN", TouchEvent::WHEEL_DOWN},
-			{}
-		};
-		registerOXClass<TouchEvent, Event>(os, funcs, nums);
-	}
+			case OS_VALUE_TYPE_STRING:
+				ev = (eventType)os->toString(-params+0).string->hash; // TODO: change to crc32
+				break;
 
-	static void registerEventDispatcher(OS * os)
-	{
-		struct Lib {
-			static int addEventListener(OS * os, int params, int, int, void*)
-			{
-				OS_GET_SELF(EventDispatcher*);
-				if(params < 2){
-					os->setException("two arguments required");
-					return 0;
-				}
-				if(!os->isFunction(-params+1)){
-					os->setException("2nd argument must be function");
-					return 0;
-				}
-				int funcId = os->getValueId(-params+1);
-				eventType ev;
+			default:
+				os->setException("the first argument should be string or number");
+				return 0;
+			}
+			os->pushNumber(self->addEventListener(ev, EventCallback(os, funcId)));
+			return 1;
+		}
+
+		static int removeEventListener(OS * os, int params, int, int, void*)
+		{
+			OS_GET_SELF(EventDispatcher*);
+			if(params == 1){
 				switch(os->getType(-params+0)){
 				case OS_VALUE_TYPE_NUMBER:
-					ev = (eventType)os->toInt(-params+0);
-					break;
-
-				case OS_VALUE_TYPE_STRING:
-					ev = (eventType)os->toString(-params+0).string->hash; // TODO: change to crc32
-					break;
+					self->removeEventListener(os->toInt(-params+0));
+					return 0;
 
 				default:
-					os->setException("the first argument should be string or number");
+					os->setException("argument should be number here");
 					return 0;
 				}
-				os->pushNumber(self->addEventListener(ev, EventCallback(os, funcId)));
+			}
+			eventType ev;
+			switch(os->getType(-params+0)){
+			case OS_VALUE_TYPE_NUMBER:
+				ev = (eventType)os->toInt(-params+0);
+				break;
+
+			case OS_VALUE_TYPE_STRING:
+				ev = (eventType)os->toString(-params+0).string->hash; // TODO: change to crc32
+				break;
+
+			default:
+				os->setException("the first argument should be string or number here");
+				return 0;
+			}
+			if(!os->isFunction(-params+1)){
+				os->setException("2nd argument must be function");
+				return 0;
+			}
+			int funcId = os->getValueId(-params+1);
+			self->removeEventListener(ev, EventCallback(os, funcId));
+			return 0;
+		}
+	};
+
+	OS::FuncDef funcs[] = {
+		def("__newinstance", &Lib::__newinstance),
+		DEF_GET(listenersCount, EventDispatcher, ListenersCount),
+		{"addEventListener", &Lib::addEventListener},
+		{"removeEventListener", &Lib::removeEventListener},
+		def("removeAllEventListeners", &EventDispatcher::removeAllEventListeners),
+		{}
+	};
+	registerOXClass<EventDispatcher, Object>(os, funcs);
+}
+static bool __registerEventDispatcher = addRegFunc(registerEventDispatcher);
+
+// =====================================================================
+
+OS_DECL_OX_CLASS(Actor);
+static void registerActor(OS * os)
+{
+	struct Lib { // Actor: public oxygine::Actor
+		static Actor * __newinstance()
+		{
+			return new Actor();
+		}
+
+		static int addTween(OS * os, int params, int, int, void*)
+		{
+			OS_GET_SELF(Actor*);
+			if(params < 1){
+				os->setException("argument required");
+				return 0;
+			}
+			os->pushStackValue(-params+0);
+			os->getGlobal("Tween");
+			bool isTween = os->is();
+			os->pop(2);
+			if(isTween){
+				os->pushStackValue(-params+0);
 				return 1;
 			}
 
-			static int removeEventListener(OS * os, int params, int, int, void*)
-			{
-				OS_GET_SELF(EventDispatcher*);
-				if(params == 1){
-					switch(os->getType(-params+0)){
-					case OS_VALUE_TYPE_NUMBER:
-						self->removeEventListener(os->toInt(-params+0));
-						return 0;
-
-					default:
-						os->setException("argument should be number here");
-						return 0;
-					}
-				}
-				eventType ev;
-				switch(os->getType(-params+0)){
-				case OS_VALUE_TYPE_NUMBER:
-					ev = (eventType)os->toInt(-params+0);
-					break;
-
-				case OS_VALUE_TYPE_STRING:
-					ev = (eventType)os->toString(-params+0).string->hash; // TODO: change to crc32
-					break;
-
-				default:
-					os->setException("the first argument should be string or number here");
-					return 0;
-				}
-				if(!os->isFunction(-params+1)){
-					os->setException("2nd argument must be function");
-					return 0;
-				}
-				int funcId = os->getValueId(-params+1);
-				self->removeEventListener(ev, EventCallback(os, funcId));
+			if(params < 3){
+				os->setException("3 arguments required");
 				return 0;
 			}
-		};
+			OS::String name = os->toString(-params+0);
+			timeMS duration = os->toInt(-params+2);
+			int loops = params > 3 ? os->toInt(-params+3) : 1;
+			bool twoSides = params > 4 ? os->toInt(-params+4) : false;
+			timeMS delay = params > 5 ? os->toInt(-params+5) : 0;
+			Tween::EASE ease = params > 6 ? (Tween::EASE)os->toInt(-params+5) : Tween::EASE::ease_linear;
 
-		OS::FuncDef funcs[] = {
-			def("__get@listenersCount", &EventDispatcher::getListenersCount),
-			{"addEventListener", &Lib::addEventListener},
-			{"removeEventListener", &Lib::removeEventListener},
-			def("removeAllEventListeners", &EventDispatcher::removeAllEventListeners),
-			{}
-		};
-		registerOXClass<EventDispatcher, Object>(os, funcs);
-	}
-
-	static void registerActor(OS * os)
-	{
-		struct Lib // Actor: public oxygine::Actor
-		{
-			static Actor * __newinstance()
-			{
-				return new Actor();
-			}
-		};
-
-		OS::FuncDef funcs[] = {
-			def("__newinstance", &Lib::__newinstance),
-			def("addChild", (void(Actor::*)(Actor*))&Actor::addChild),
-
-			def("__get@x", &Actor::getX),
-			def("__set@x", &Actor::setX),
-			
-			def("__get@y", &Actor::getY),
-			def("__set@y", &Actor::setY),
-			
-			def("__get@width", &Actor::getWidth),
-			def("__set@width", &Actor::setWidth),
-			
-			def("__get@height", &Actor::getHeight),
-			def("__set@height", &Actor::setHeight),
-			
-			def("__get@priority", &Actor::getPriority),
-			def("__set@priority", &Actor::setPriority),
-			
-			def("__get@anchor", &Actor::getAnchor),
-			def("__set@anchor", (void(Actor::*)(const Vector2 &))&Actor::setAnchor),
-			{}
-		};
-		registerOXClass<Actor, EventDispatcher>(os, funcs);
-	}
-
-	static void registerSprite(OS * os)
-	{
-		struct Lib // Actor: public oxygine::Actor
-		{
-			static Sprite * __newinstance()
-			{
-				return new Sprite();
+			if(name == "alpha"){
+				int dest = os->toInt(-params+1);
+				if(dest < 0) dest = 0; else if(dest > 255) dest = 255;
+				pushCtypeValue(os, self->addTween(Actor::TweenAlpha((unsigned char)dest), 
+					duration, loops, twoSides, delay, ease));
+				return 1;
 			}
 
-			static int setResAnimTest(OS * os, int params, int, int, void*)
-			{
-				OS_GET_SELF(Sprite*);
-				OS::String name = os->toString(-params+0);
-				self->setResAnim(res::ui.getResAnim(name.toChar()));
-				return 0;
-			}
-		};
-
-		OS::FuncDef funcs[] = {
-			def("__newinstance", &Lib::__newinstance),
-			{"setResAnimTest", &Lib::setResAnimTest},
-			{}
-		};
-		registerOXClass<Sprite, Actor>(os, funcs);
-	}
-
-	static void registerRootActor(OS * os)
-	{
-		OS::FuncDef funcs[] = {
-			{}
-		};
-		registerOXClass<RootActor, Actor>(os, funcs);
-	}
-
-	static OxygineOS * os;
-
-	/*
-	static int stackOrder;
-	static void checkStackOrder(int prev = 0)
-	{
-		if(prev == 0){
-			checkStackOrder((intptr_t)&prev);
-		}else{
-			int cur = 0;
-			stackOrder = (intptr_t)&cur < prev;
+			return 0;
 		}
-	}
-	*/
+	};
 
+	OS::FuncDef funcs[] = {
+		def("__newinstance", &Lib::__newinstance),
+		def("addChild", (void(Actor::*)(Actor*))&Actor::addChild),
+		{"addTween", &Lib::addTween},
+
+		DEF_PROP(x, Actor, X),
+		DEF_PROP(y, Actor, Y),
+		DEF_PROP(width, Actor, Width),
+		DEF_PROP(height, Actor, Height),
+		DEF_PROP(priority, Actor, Priority),
+		DEF_PROP(alpha, Actor, Alpha),
+		
+		DEF_GET(anchor, Actor, Anchor),
+		def("__set@anchor", (void(Actor::*)(const Vector2 &))&Actor::setAnchor),
+		{}
+	};
+	registerOXClass<Actor, EventDispatcher>(os, funcs);
+}
+static bool __registerActor = addRegFunc(registerActor);
+
+// =====================================================================
+
+OS_DECL_OX_CLASS(Sprite);
+static void registerSprite(OS * os)
+{
+	struct Lib { // Actor: public oxygine::Actor
+		static Sprite * __newinstance()
+		{
+			return new Sprite();
+		}
+
+		static int setResAnimTest(OS * os, int params, int, int, void*)
+		{
+			OS_GET_SELF(Sprite*);
+			OS::String name = os->toString(-params+0);
+			self->setResAnim(res::ui.getResAnim(name.toChar()));
+			return 0;
+		}
+	};
+
+	OS::FuncDef funcs[] = {
+		def("__newinstance", &Lib::__newinstance),
+		{"setResAnimTest", &Lib::setResAnimTest},
+		def("setResAnim", &Sprite::setResAnim),
+		DEF_SET(resAnim, Sprite, ResAnim),
+		{}
+	};
+	registerOXClass<Sprite, Actor>(os, funcs);
+}
+static bool __registerSprite = addRegFunc(registerSprite);
+
+// =====================================================================
+
+OS_DECL_OX_CLASS(RootActor);
+static void registerRootActor(OS * os)
+{
+	OS::FuncDef funcs[] = {
+		{}
+	};
+	OS::NumberDef nums[] = {
+		{"ACTIVATE", RootActor::ACTIVATE},
+		{"DEACTIVATE", RootActor::DEACTIVATE},
+		{"LOST_CONTEXT", RootActor::LOST_CONTEXT},
+		{}
+	};
+	registerOXClass<RootActor, Actor>(os, funcs, nums);
+}
+static bool __registerRootActor = addRegFunc(registerRootActor);
+
+// =====================================================================
+
+OS_DECL_OX_CLASS(Resource);
+static void registerResource(OS * os)
+{
+	OS::FuncDef funcs[] = {
+		{}
+	};
+	OS::NumberDef nums[] = {
+		{}
+	};
+	registerOXClass<Resource, Object>(os, funcs, nums);
+}
+static bool __registerResource = addRegFunc(registerResource);
+
+// =====================================================================
+
+OS_DECL_OX_CLASS(ResAnim);
+static void registerResAnim(OS * os)
+{
+	OS::FuncDef funcs[] = {
+		{}
+	};
+	OS::NumberDef nums[] = {
+		{}
+	};
+	registerOXClass<ResAnim, Resource>(os, funcs, nums);
+}
+static bool __registerResAnim = addRegFunc(registerResAnim);
+
+// =====================================================================
+
+OS_DECL_OX_CLASS(Resources);
+static void registerResources(OS * os)
+{
+	struct Lib
+	{
+		static Resources * __newinstance()
+		{
+			return new Resources();
+		}
+
+		static int loadXML(OS * os, int params, int, int, void*)
+		{
+			OS_GET_SELF(Resources*);
+			if(params < 1){
+				os->setException("string argument required");
+				return 0;
+			}
+			OS::String name = os->toString(-params+0);
+			self->loadXML(name.toChar());
+			return 0;
+		}
+			
+	};
+	OS::FuncDef funcs[] = {
+		def("__newinstance", &Lib::__newinstance),
+		{"loadXML", &Lib::loadXML},
+		def("getResAnim", &Resources::getResAnim),
+		{}
+	};
+	OS::NumberDef nums[] = {
+		{}
+	};
+	registerOXClass<Resources, Resource>(os, funcs, nums);
+}
+static bool __registerResources = addRegFunc(registerResources);
+
+// =====================================================================
+
+OS_DECL_OX_CLASS(Tween);
+void registerTween(OS * os)
+{
+	struct Lib
+	{
+		/* static Tween * __newinstance()
+		{
+			return new Tween();
+		} */
+
+	};
+	OS::FuncDef funcs[] = {
+		// def("__newinstance", &Lib::__newinstance),
+		DEF_PROP(loops, Tween, Loops),
+		DEF_GET(duration, Tween, Duration),
+		DEF_PROP(ease, Tween, Ease),
+		DEF_PROP(delay, Tween, Delay),
+		DEF_PROP(client, Tween, Client),
+		DEF_GET(percent, Tween, Percent),
+		DEF_PROP(dataObject, Tween, DataObject),
+		DEF_GET(nextSibling, Tween, NextSibling),
+		DEF_GET(prevSibling, Tween, PrevSibling),
+		def("__get@isStarted", &Tween::isStarted),
+		def("__get@isDone", &Tween::isDone),
+		DEF_SET(detachActor, Tween, DetachActor),
+		{}
+	};
+	OS::NumberDef nums[] = {
+		{}
+	};
+	registerOXClass<Tween, EventDispatcher>(os, funcs, nums);
+}
+static bool __registerTween = addRegFunc(registerTween);
+
+// =====================================================================
+
+static OxygineOS * os;
+
+struct Oxygine
+{
 	static void init()
 	{
-		// checkStackOrder();
-
 		os = OS::create(new OxygineOS());
 
 		initDateTimeExtension(os);
 
-		registerObject(os);
-		registerEvent(os);
-		registerTouchEvent(os);
-		registerEventDispatcher(os);
-		registerActor(os);
-		registerSprite(os);
-		registerRootActor(os);
+		std::vector<RegisterFunction>::iterator it = registerFunctions.begin();
+		for(; it != registerFunctions.end(); ++it){
+			RegisterFunction func = *it;
+			func(os);
+		}
 	}
 
 	static void shutdown()
@@ -535,11 +751,7 @@ struct Oxygine
 
 }; // struct Oxygine
 
-OxygineOS * Oxygine::os;
-// int Oxygine::stackOrder;
-
 } // namespace ObjectScript
-
 
 void callObjectScriptFunction(ObjectScript::OS * os, int func_id, Event * ev)
 {
@@ -549,7 +761,7 @@ void callObjectScriptFunction(ObjectScript::OS * os, int func_id, Event * ev)
 	}
 	os->pushValueById(func_id);
 	OX_ASSERT(os->isFunction());
-	os->pushGlobals(); // this
+	os->pushNull(); // this
 	pushCtypeValue(os, ev);
 	os->call(1);
 }
