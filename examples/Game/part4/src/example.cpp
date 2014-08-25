@@ -854,20 +854,21 @@ static void registerActor(OS * os)
 			return new Actor();
 		}
 
-		/* static int setParent(OS * os, int params, int, int, void*)
+		static int setParent(OS * os, int params, int, int, void*)
 		{
 			OS_GET_SELF(Actor*);
+			if(os->isNull(-params+0)){
+				self->detach();
+				return 0;
+			}
 			Actor * p = CtypeValue<Actor*>::getArg(os, -params+0);
-			if(self->getParent() != p){
-				if(self->getParent()){
-					self->detach();
-				}
+			if(!p){
+				os->setException("Actor required");
+				return 0;
 			}
-			if(p){
-				self->attachTo(p);
-			}
+			self->attachTo(p);
 			return 0;
-		} */
+		}
 
 		static int addTween(OS * os, int params, int, int, void*)
 		{
@@ -914,6 +915,7 @@ static void registerActor(OS * os)
 			CASE_OX_TWEEN("height", float, TweenHeight);
 			CASE_OX_TWEEN("rotation", float, TweenRotation);
 			CASE_OX_TWEEN("rotationDegrees", float, TweenRotationDegrees);
+			CASE_OX_TWEEN("angle", float, TweenRotationDegrees);
 			CASE_OX_TWEEN("scale", Vector2, TweenScale);
 			CASE_OX_TWEEN("scaleX", float, TweenScaleX);
 			CASE_OX_TWEEN("scaleY", float, TweenScaleY);
@@ -967,13 +969,15 @@ static void registerActor(OS * os)
 
 		DEF_PROP(rotation, Actor, Rotation),
 		DEF_PROP(rotationDegrees, Actor, RotationDegrees),
+		DEF_PROP(angle, Actor, RotationDegrees),
 
 		DEF_PROP(priority, Actor, Priority),
 		DEF_PROP(visible, Actor, Visible),
 		DEF_PROP(cull, Actor, Cull),
 
 		def("__get@parent", &Actor::getParent),
-		def("__set@parent", (void(Actor::*)(Actor*))&Actor::attachTo),
+		// def("__set@parent", (void(Actor::*)(Actor*))&Actor::attachTo),
+		{"__set@parent", &Lib::setParent},
 
 		DEF_GET(size, Actor, Size),
 		def("__set@size", (void(Actor::*)(const Vector2 &))&Actor::setSize),
@@ -1198,6 +1202,8 @@ struct Oxygine
 
 	static void run()
 	{
+		os->setGCStartWhenUsedBytes(32*1024);
+
 		// pushCtypeValue(os, getRoot().get());
 		pushCtypeValue(os, getRoot());
 		os->setGlobal("root");

@@ -5,12 +5,6 @@ GameScene = extends Scene {
 			resAnim = res.getResAnim("bg"),
 			parent = @view,
 		}
-		var logo = Sprite()
-		logo.resAnim = res.getResAnim("buttons")
-		logo.attrs {		
-			parent = @view,
-			pos = @view.size - logo.size,
-		}
 		
 		var btn = MyButton().attrs {
 			name = "play",
@@ -27,7 +21,11 @@ GameScene = extends Scene {
 		move.parent = @view
 		move.y = @view.height - move.height
 		
-		print "move.pos: ${move.pos}"
+		var fire = Joystick()
+		fire.parent = @view
+		// fire.x = @view.width - move.width
+		// fire.y = @view.height - move.height
+		fire.pos = @view.size - move.size
 	},
 }
 

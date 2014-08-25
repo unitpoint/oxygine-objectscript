@@ -6,7 +6,8 @@ Scene = extends EventDispatcher {
 		
 		@addEventListener("hidden", function(ev){
 			print "catch event: hidden, ${ev}"
-		})
+			@view.detach()
+		}.bind(this))
 	},
 	
 	changeScene = function(next){
