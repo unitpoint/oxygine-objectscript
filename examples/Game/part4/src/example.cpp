@@ -24,7 +24,7 @@ public:
 
 	void retainFromEventCallback(EventCallback * cb)
 	{
-		retain();
+		// retain();
 		EventCallbacks::iterator it = eventCallbacks.find(cb);
 		if(it != eventCallbacks.end()){
 			OX_ASSERT(false);
@@ -44,7 +44,7 @@ public:
 		}else{
 			OX_ASSERT(false);
 		}
-		release();
+		// release();
 	}
 
 	void resetAllEventCallbacks()
@@ -789,19 +789,6 @@ void registerTween(OS * os)
 		{
 			return new Tween();
 		} */
-
-		/* static int addDoneCallback(OS * os, int params, int, int, void*)
-		{
-			OS_GET_SELF(Tween*);
-			if(!os->isFunction(-params+0)){
-				os->setException("function required");
-				return 0;
-			}
-			int funcId = os->getValueId(-params+0);
-			self->addDoneCallback(EventCallback(os, funcId));
-			return 0;
-		} */
-
 	};
 	OS::FuncDef funcs[] = {
 		// def("__newinstance", &Lib::__newinstance),
@@ -844,6 +831,230 @@ void registerTween(OS * os)
 static bool __registerTween = addRegFunc(registerTween);
 
 // =====================================================================
+/*
+OS_DECL_OX_CLASS(TweenAnim);
+void registerTweenAnim(OS * os)
+{
+	struct Lib
+	{
+		static Tween * __newinstance()
+		{
+			return new Tween();
+		}
+	};
+	OS::FuncDef funcs[] = {
+		def("__newinstance", &Lib::__newinstance),
+		{}
+	};
+	OS::NumberDef nums[] = {
+		{}
+	};
+	registerOXClass<TweenAnim, Tween>(os, funcs, nums);
+}
+static bool __registerTweenAnim = addRegFunc(registerTweenAnim);
+*/
+// =====================================================================
+
+DECLARE_SMART(UpdateEvent, spUpdateEvent);
+class UpdateEvent: public Event
+{
+public:
+	OS_DECLARE_CLASSINFO(UpdateEvent)
+
+	enum {
+		UPDATE = makefourcc('U','D','E','V')
+	};
+
+	UpdateState us;
+	spTween tween;
+
+	UpdateEvent(): Event(UPDATE){}
+
+	const UpdateState& getUpdateState() const { return us; }
+	void setUpdateState(const UpdateState& _us){ us = _us; }
+
+	spTween getTween() const { return tween; }
+	void setTween(const spTween& t){ tween = t; }
+};
+
+OS_DECL_OX_CLASS(UpdateEvent);
+static void registerUpdateEvent(OS * os)
+{
+	struct Lib
+	{
+		static UpdateEvent * __newinstance()
+		{
+			return new UpdateEvent();
+		}
+	};
+	OS::FuncDef funcs[] = {
+		def("__newinstance", &Lib::__newinstance),
+		DEF_PROP(us, UpdateEvent, UpdateState),
+		DEF_PROP(tween, UpdateEvent, Tween),
+		{}
+	};
+	OS::NumberDef nums[] = {
+		{"UPDATE", UpdateEvent::UPDATE},
+		{}
+	};
+	registerOXClass<UpdateEvent, Event>(os, funcs, nums);
+}
+static bool __registerUpdateEvent = addRegFunc(registerUpdateEvent);
+
+// =====================================================================
+
+DECLARE_SMART(BaseUpdateTween, spBaseUpdateTween);
+class BaseUpdateTween: public Tween
+{
+public:
+	OS_DECLARE_CLASSINFO(BaseUpdateTween);
+
+	EventCallback updateCallback;
+
+	BaseUpdateTween()
+	{
+		// share same instance for each update (evoid create new OS object each update)
+		ev = new UpdateEvent();
+		interval = 0;
+		curInterval = fixInterval = 0;
+	}
+
+	const EventCallback& getUpdateCallback() const { return updateCallback; }
+	void setUpdateCallback(const EventCallback& cb){ updateCallback = cb; }
+
+	timeMS getInterval() const { return interval; }
+	void setInterval(timeMS _interval){ interval = _interval; curInterval = fixInterval = 0; }
+
+protected:
+
+	spUpdateEvent ev;
+	timeMS interval;
+	timeMS curInterval;
+	timeMS fixInterval;
+
+	virtual void _update(Actor &actor, const UpdateState &us)
+	{
+		timeMS dt = us.dt;
+		if(interval > 0){
+			curInterval += us.dt;
+			if(curInterval < interval){
+				return;
+			}
+			dt = curInterval - fixInterval;
+			OX_ASSERT(us.dt >= 0);
+			curInterval -= interval;
+			fixInterval = curInterval;
+		}
+
+		ev->type = UpdateEvent::UPDATE;
+		ev->phase = UpdateEvent::phase_target;
+		ev->bubbles = false;
+		ev->stopsImmediatePropagation = false;
+		ev->stopsPropagation = false;
+		ev->userData = NULL;
+		ev->userDataObject = NULL;
+		ev->target = ev->currentTarget = &actor;
+		ev->tween = this;
+		ev->us.time = us.time;
+		ev->us.dt = dt;
+		ev->us.iteration = us.iteration;
+
+		if(updateCallback){
+			updateCallback(ev.get());
+		}
+		dispatchEvent(ev.get());
+
+		// clear refs
+		ev->userDataObject = NULL;
+		ev->target = ev->currentTarget = NULL;
+		ev->tween = NULL;
+	}
+};
+
+OS_DECL_OX_CLASS(BaseUpdateTween);
+static void registerBaseUpdateTween(OS * os)
+{
+	struct Lib
+	{
+		static BaseUpdateTween * __newinstance()
+		{
+			return new BaseUpdateTween();
+		}
+	};
+	OS::FuncDef funcs[] = {
+		def("__newinstance", &Lib::__newinstance),
+		DEF_PROP(updateCallback, BaseUpdateTween, UpdateCallback),
+		DEF_PROP(interval, BaseUpdateTween, Interval),
+		{}
+	};
+	OS::NumberDef nums[] = {
+		{}
+	};
+	registerOXClass<BaseUpdateTween, Tween>(os, funcs, nums);
+}
+static bool __registerBaseUpdateTween = addRegFunc(registerBaseUpdateTween);
+
+// =====================================================================
+
+DECLARE_SMART(BaseDoneTween, spBaseDoneTween);
+class BaseDoneTween: public Tween
+{
+public:
+	OS_DECLARE_CLASSINFO(BaseDoneTween)
+
+	BaseDoneTween(){}
+
+protected:
+
+	void init(Actor &){}
+	void update(Actor &, float p, const UpdateState &us){}
+};
+
+OS_DECL_OX_CLASS(BaseDoneTween);
+static void registerBaseDoneTween(OS * os)
+{
+	struct Lib
+	{
+		static BaseDoneTween * __newinstance()
+		{
+			return new BaseDoneTween();
+		}
+	};
+	OS::FuncDef funcs[] = {
+		def("__newinstance", &Lib::__newinstance),
+		{}
+	};
+	OS::NumberDef nums[] = {
+		{}
+	};
+	registerOXClass<BaseDoneTween, Tween>(os, funcs, nums);
+}
+static bool __registerBaseDoneTween = addRegFunc(registerBaseDoneTween);
+
+// =====================================================================
+
+OS_DECL_OX_CLASS(ResAnim);
+static void registerResAnim(OS * os)
+{
+	OS::FuncDef funcs[] = {
+		{}
+	};
+	OS::NumberDef nums[] = {
+		{}
+	};
+	registerOXClass<ResAnim, Resource>(os, funcs, nums);
+}
+static bool __registerResAnim = addRegFunc(registerResAnim);
+
+// =====================================================================
+
+#define CASE_OX_TWEEN(prop, type, tween) \
+	if(name == prop){ \
+		type dest = CtypeValue<type>::getArg(os, -params+1); \
+		pushCtypeValue(os, self->addTween(tween(dest), \
+			duration, loops, twoSides, delay, ease)); \
+		return 1; \
+	}
 
 OS_DECL_OX_CLASS(Actor);
 static void registerActor(OS * os)
@@ -901,25 +1112,27 @@ static void registerActor(OS * os)
 				return 1;
 			}
 
-#define CASE_OX_TWEEN(prop, type, tween) \
-			if(name == prop){ \
-				type dest = CtypeValue<type>::getArg(os, -params+1); \
-				pushCtypeValue(os, self->addTween(Actor::tween(dest), \
-					duration, loops, twoSides, delay, ease)); \
-				return 1; \
+			CASE_OX_TWEEN("pos", Vector2, Actor::TweenPosition);
+			CASE_OX_TWEEN("x", float, Actor::TweenX);
+			CASE_OX_TWEEN("y", float, Actor::TweenY);
+			CASE_OX_TWEEN("width", float, Actor::TweenWidth);
+			CASE_OX_TWEEN("height", float, Actor::TweenHeight);
+			CASE_OX_TWEEN("rotation", float, Actor::TweenRotation);
+			CASE_OX_TWEEN("rotationDegrees", float, Actor::TweenRotationDegrees);
+			CASE_OX_TWEEN("angle", float, Actor::TweenRotationDegrees);
+			CASE_OX_TWEEN("scale", Vector2, Actor::TweenScale);
+			CASE_OX_TWEEN("scaleX", float, Actor::TweenScaleX);
+			CASE_OX_TWEEN("scaleY", float, Actor::TweenScaleY);
+			CASE_OX_TWEEN("width", float, Actor::TweenWidth);
+
+			VStyleActor * styleActor = dynamic_cast<VStyleActor*>(self);
+			if(styleActor){
+				CASE_OX_TWEEN("color", Color, VStyleActor::TweenColor);
 			}
-			CASE_OX_TWEEN("pos", Vector2, TweenPosition);
-			CASE_OX_TWEEN("x", float, TweenX);
-			CASE_OX_TWEEN("y", float, TweenY);
-			CASE_OX_TWEEN("width", float, TweenWidth);
-			CASE_OX_TWEEN("height", float, TweenHeight);
-			CASE_OX_TWEEN("rotation", float, TweenRotation);
-			CASE_OX_TWEEN("rotationDegrees", float, TweenRotationDegrees);
-			CASE_OX_TWEEN("angle", float, TweenRotationDegrees);
-			CASE_OX_TWEEN("scale", Vector2, TweenScale);
-			CASE_OX_TWEEN("scaleX", float, TweenScaleX);
-			CASE_OX_TWEEN("scaleY", float, TweenScaleY);
-			CASE_OX_TWEEN("width", float, TweenWidth);
+			Sprite * sprite = dynamic_cast<Sprite*>(self);
+			if(sprite){
+				CASE_OX_TWEEN("resAnim", ResAnim*, TweenAnim);
+			}
 			return 0;
 		}
 
@@ -1063,6 +1276,19 @@ static void registerVStyleActor(OS * os)
 		{}
 	};
 	registerOXClass<VStyleActor, Actor>(os, funcs);
+
+	OS::NumberDef globalNums[] = {
+		{"BLEND_DEFAULT", blend_mode::blend_default},
+		{"BLEND_DISABLED", blend_mode::blend_disabled},
+		{"BLEND_PREMULTIPLIED_ALPHA", blend_mode::blend_premultiplied_alpha},
+		{"BLEND_ALPHA", blend_mode::blend_alpha},
+		{"BLEND_ADD", blend_mode::blend_add},
+		{"BLEND_SUB", blend_mode::blend_sub},
+		{}
+	};
+	os->pushGlobals();
+	os->setNumbers(globalNums);
+	os->pop();
 }
 static bool __registerVStyleActor = addRegFunc(registerVStyleActor);
 
@@ -1120,21 +1346,6 @@ static void registerResource(OS * os)
 	registerOXClass<Resource, Object>(os, funcs, nums);
 }
 static bool __registerResource = addRegFunc(registerResource);
-
-// =====================================================================
-
-OS_DECL_OX_CLASS(ResAnim);
-static void registerResAnim(OS * os)
-{
-	OS::FuncDef funcs[] = {
-		{}
-	};
-	OS::NumberDef nums[] = {
-		{}
-	};
-	registerOXClass<ResAnim, Resource>(os, funcs, nums);
-}
-static bool __registerResAnim = addRegFunc(registerResAnim);
 
 // =====================================================================
 
@@ -1239,15 +1450,17 @@ void callOSEventFunction(ObjectScript::OS * os, int func_id, Event * ev)
 	OX_ASSERT(os->isFunction());
 	os->pushNull(); // this
 	pushCtypeValue(os, ev);
-	int eventId = os->getValueId();
+	// int eventId = os->getValueId();
 	os->call(1);
 	os->handleException();
 	
 	if(is_stack_event){
-		os->pushValueById(eventId);
+		OX_ASSERT(ev->osValueId);
+		os->pushValueById(ev->osValueId); // eventId);
 		const OS_ClassInfo& info = Event::getClassInfoStatic();
 		os->clearUserdata(info.instance_id, -1, info.class_id);
 		os->pop();
+		OX_ASSERT(!ev->osValueId);
 
 		ev->_ref_counter--;
 	}
@@ -1278,7 +1491,7 @@ void example_init()
 
 void example_update()
 {
-	sleep(15);
+	// sleep(15);
 }
 
 void example_destroy()

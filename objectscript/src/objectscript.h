@@ -241,7 +241,7 @@ namespace ObjectScript
 
 	enum OS_EValueType
 	{
-		OS_VALUE_TYPE_UNKNOWN,
+		// OS_VALUE_TYPE_UNKNOWN,
 		OS_VALUE_TYPE_NULL,
 		OS_VALUE_TYPE_BOOL,
 		OS_VALUE_TYPE_NUMBER,

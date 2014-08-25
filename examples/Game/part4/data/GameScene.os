@@ -9,23 +9,57 @@ GameScene = extends Scene {
 		var btn = MyButton().attrs {
 			name = "play",
 			resAnim = res.getResAnim("menu"),		
-			anchor = vec2(0.5f, 0.5f),
-			pos = @view.size / 2,
+			anchor = vec2(1, 0),
 			parent = @view,	
 		}
-		btn.addEventListener(TouchEvent.CLICK, {||
+		btn.x = @view.width
+		btn.addEventListener(TouchEvent.CLICK, function(){
 			@changeScene(MainMenuScene.instance)
 		}.bind(this))
 		
-		var move = Joystick()
-		move.parent = @view
-		move.y = @view.height - move.height
+		@move = Joystick()
+		@move.parent = @view
+		@move.y = @view.height - @move.height
 		
-		var fire = Joystick()
-		fire.parent = @view
-		// fire.x = @view.width - move.width
-		// fire.y = @view.height - move.height
-		fire.pos = @view.size - move.size
+		@fire = Joystick()
+		@fire.parent = @view
+		@fire.pos = @view.size - @move.size
+		
+		@view.addTween(UpdateTween(@update.bind(this)))
+		// @view.addTween(UpdateTween(1000/10, @updateUnits.bind(this)))
+		
+		@units = {}
+		for(var i = 0; i < 10; i++){
+			var enemy = Enemy().attrs {
+				parent = @view,
+				x = math.random(0.1, 0.9) * @view.width,
+				y = math.random(0.1, 0.9) * @view.height,
+			}
+			@units[enemy] = true
+		}
+		
+		@player = Player().attrs {
+			parent = @view,
+			pos = @view.size / 2,
+		}		
+	},
+	
+	update = function(ev){
+		ev.game = this
+		@player.update(ev)
+		for(var unit in @units){
+			unit.update(ev)
+			if(!unit.isAlive){
+				delete @units[unit]
+			}
+		}
+	},
+	
+	addRocket = function(rocket){
+		rocket is Rocket || throw "Rocket required"
+		rocket.parent = @view
+		@units[rocket] = true
+		// print "add rocket: ${rocket}"
 	},
 }
 

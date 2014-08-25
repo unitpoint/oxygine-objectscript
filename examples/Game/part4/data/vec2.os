@@ -27,6 +27,16 @@ vec2 = extends Object {
 		return this
 	},
 	
+	normalizeToMax = function(maxLen){
+		var len = #this
+		if(len > maxLen){
+			var scale = maxLen / len
+			@x *= scale
+			@y *= scale
+		}
+		return this
+	},
+	
 	__len = function(){
 		return math.sqrt(@x*@x + @y*@y)
 	},

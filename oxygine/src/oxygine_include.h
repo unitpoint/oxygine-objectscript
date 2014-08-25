@@ -133,19 +133,22 @@ struct OS_ClassInfo
 #define OS_DECLARE_CLASSINFO_STATIC(type) \
 	OS_DECLARE_CLASSINFO_STATIC_NAME(type, #type)
 
-#define OS_DECLARE_CLASSINFO(type) \
-	OS_DECLARE_CLASSINFO_STATIC(type) \
+#define OS_DECLARE_CLASSINFO_NAME(type, name) \
+	OS_DECLARE_CLASSINFO_STATIC_NAME(type, name) \
 	virtual const OS_ClassInfo& getClassInfo(){ \
 		const OS_ClassInfo& info = getClassInfoStatic(); \
 		OS_CHECK_CLASSNAME(info, type); \
 		return info; \
 	}
 
-// #define OS_CLASSINFO_OF(type) type :: getClassInfoStatic()
+#define OS_DECLARE_CLASSINFO(type) \
+	OS_DECLARE_CLASSINFO_NAME(type, #type)
 
 #else // OX_WITH_OBJECTSCRIPT
 
+#define OS_DECLARE_CLASSINFO_STATIC_NAME(type)
 #define OS_DECLARE_CLASSINFO_STATIC(type)
+#define OS_DECLARE_CLASSINFO_NAME(type)
 #define OS_DECLARE_CLASSINFO(type)
 
 #endif // OX_WITH_OBJECTSCRIPT

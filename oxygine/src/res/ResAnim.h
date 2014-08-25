@@ -17,6 +17,8 @@ namespace oxygine
 	class ResAnim: public Resource
 	{
 	public:
+		OS_DECLARE_CLASSINFO(ResAnim);
+
 		ResAnim(Resource *atlas = 0);
 		~ResAnim();
 
