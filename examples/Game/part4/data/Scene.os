@@ -6,8 +6,11 @@ Scene = extends EventDispatcher {
 		
 		@addEventListener("hidden", function(ev){
 			print "catch event: hidden, ${ev}"
-			@view.detach()
+			// @view.detach()
 		}.bind(this))
+		
+		@view.alpha = 0
+		@transition = null
 	},
 	
 	changeScene = function(next){
@@ -16,20 +19,28 @@ Scene = extends EventDispatcher {
 	},
 	
 	show = function(){
-		root.addChild(@view)
-		@view.alpha = 0
-		@view.addTween("alpha", 1, 1000)
+		@transition = "show"
+		@view.parent = root
+		@view.removeTweensByName("transition")
+		@view.addTween("alpha", 1, 1000).attrs {
+			name = "transition",
+			doneCallback = function(){
+				@transition = null
+				// @dispatchEvent{"hidden", value = "text", xyz = 123}
+			}.bind(this),
+		}
 	},
 	
 	hide = function(){
-		var self = this
-		var tween = @view.addTween("alpha", 0, 1000)
-		tween.detachActor = true
-		/* tween.addDoneCallback {||
-			// self.dispatchEvent{"hidden"}
-		} */
-		tween.doneCallback = function(){
-			@dispatchEvent{"hidden", value = "text", xyz = 123}
-		}.bind(this)
+		@transition = "hide"
+		@view.removeTweensByName("transition")
+		@view.addTween("alpha", 0, 1000).attrs {
+			name = "transition",
+			detachActor = true,
+			doneCallback = function(){
+				@transition = null
+				@dispatchEvent{"hidden", value = "text", xyz = 123}
+			}.bind(this),
+		}
 	},
 }

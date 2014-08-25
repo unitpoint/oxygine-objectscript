@@ -14,7 +14,7 @@ GameScene = extends Scene {
 		}
 		btn.x = @view.width
 		btn.addEventListener(TouchEvent.CLICK, function(){
-			@changeScene(MainMenuScene.instance)
+			!@transition && @changeScene(MainMenuScene.instance)
 		}.bind(this))
 		
 		@move = Joystick()

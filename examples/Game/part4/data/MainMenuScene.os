@@ -21,7 +21,7 @@ MainMenuScene = extends Scene {
 		}
 		var self = this
 		btn.addEventListener(TouchEvent.CLICK, {||
-			self.changeScene(GameScene.instance)
+			!@transition && self.changeScene(GameScene.instance)
 		})
 	},
 }
