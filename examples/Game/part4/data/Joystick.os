@@ -27,14 +27,22 @@ Joystick = extends Sprite {
 		//if player touched down
 		if(ev.type == TouchEvent.TOUCH_DOWN){
 			@finger.visible = true
-			@color = Color(0.7, 0, 0)
+			
+			@removeTweensByName("fingerColorTween")
+			@addTween("color", Color(0.7, 0, 0), 200).name = "fingerColorTween"
+			// @color = Color(0.7, 0, 0)
+			
 			@active = true
 		}
 
 		//if player touched up
 		if(ev.type == TouchEvent.TOUCH_UP){
 			@finger.visible = false
-			@color = Color(1, 1, 1)
+			
+			@removeTweensByName("fingerColorTween")
+			@addTween("color", Color(1, 1, 1), 200).name = "fingerColorTween"
+			// @color = Color(1, 1, 1)
+			
 			@active = false
 		}
 
