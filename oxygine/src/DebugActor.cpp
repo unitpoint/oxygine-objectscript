@@ -109,7 +109,7 @@ namespace oxygine
 		setHeight(45);
 
 		_bg = new ColorRectSprite;
-		_bg->setColor(Color(Color::White, 64));
+		_bg->setColor(Color(Color::White, 128));
 		_bg->setSize(getSize());
 		_bg->setInputEnabled(false);
 		addChild(_bg);
@@ -260,6 +260,11 @@ namespace oxygine
 		s << "render=" << getRoot()->_statRender << "ms ";
 		s << "textures=" << NativeTexture::created << " ";
 		s << "\nlisteners=" << getRoot()->getListenersCount() << "";
+
+#ifdef OX_WITH_OBJECTSCRIPT
+		std::string getOSDebugStr();
+		s << getOSDebugStr();
+#endif
 
 		if (!_debugText.empty())
 		{

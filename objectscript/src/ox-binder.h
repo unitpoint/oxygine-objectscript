@@ -1381,7 +1381,7 @@ static bool __registerResources = addRegFunc(registerResources);
 
 // =====================================================================
 
-static OxygineOS * os;
+OxygineOS * os;
 
 struct Oxygine
 {
@@ -1458,6 +1458,23 @@ void callOSEventFunction(ObjectScript::OS * os, int func_id, Event * ev)
 
 		ev->_ref_counter--;
 	}
+}
+
+#include <sstream>
+
+std::string getOSDebugStr()
+{
+	std::stringstream s;
+	if(ObjectScript::os){
+		s << endl;
+		s << "OS MEM (Kb)";
+		s << " used:" << (ObjectScript::os->getUsedBytes() / 1024);
+		s << " cached:" << (ObjectScript::os->getCachedBytes() / 1024);
+		s << " allocated:" << (ObjectScript::os->getAllocatedBytes() / 1024);
+		// s << " max:" << (ObjectScript::os->getMaxAllocatedBytes() / 1024);
+		// s << endl;
+	}
+	return s.str();
 }
 
 #endif // OX_WITH_OBJECTSCRIPT
