@@ -54,6 +54,11 @@ public:
 		}
 	}
 
+	int getNumValues() const
+	{
+		return core->num_created_values - core->num_destroyed_values;
+	}
+
 	virtual bool isFileExist(const OS_CHAR * filename)
 	{
 		return file::exists(filename);
@@ -113,6 +118,8 @@ public:
 	}
 };
 
+// #define OS_USE_OX_USERPOINTER
+
 namespace ObjectScript {
 
 template <class T> struct CtypeOXClass{};
@@ -126,7 +133,12 @@ template <class T> struct CtypeOXClass<T*>
 	static type getArg(ObjectScript::OS * os, int offs)
 	{
 		const OS_ClassInfo& classinfo = ttype::getClassInfoStatic();
+#ifdef OS_USE_OX_USERPOINTER
 		return (type)os->toUserdata(classinfo.instance_id, offs, classinfo.class_id);
+#else
+		type * p = (type*)os->toUserdata(classinfo.instance_id, offs, classinfo.class_id);
+		return p ? *p : NULL;
+#endif
 	}
 	static void push(ObjectScript::OS * os, const type& val)
 	{
@@ -140,7 +152,13 @@ template <class T> struct CtypeOXClass<T*>
 			OX_ASSERT(os->isUserdata(classinfo.instance_id, -1, classinfo.class_id));
 			return;
 		}
+#ifdef OS_USE_OX_USERPOINTER
 		os->pushUserPointer(classinfo.instance_id, val, UserDataDestructor<ttype>::dtor);
+#else
+		void ** data = (void**)os->pushUserdata(classinfo.instance_id, sizeof(void*), UserDataDestructor<ttype>::dtor);
+		OX_ASSERT(data);
+		data[0] = val;
+#endif
 		val->osValueId = os->getValueId();
 		val->addRef();
 		os->pushStackValue();
@@ -164,7 +182,12 @@ template <class T> struct CtypeOXSmartClass
 	static type getArg(ObjectScript::OS * os, int offs)
 	{
 		const OS_ClassInfo& classinfo = ttype::getClassInfoStatic();
+#ifdef OS_USE_OX_USERPOINTER
 		return (type)os->toUserdata(classinfo.instance_id, offs, classinfo.class_id);
+#else
+		type * p = (type*)os->toUserdata(classinfo.instance_id, offs, classinfo.class_id);
+		return p ? *p : NULL;
+#endif
 	}
 	static void push(ObjectScript::OS * os, const T& val)
 	{
@@ -178,7 +201,13 @@ template <class T> struct CtypeOXSmartClass
 			OX_ASSERT(os->isUserdata(classinfo.instance_id, -1, classinfo.class_id));
 			return;
 		}
+#ifdef OS_USE_OX_USERPOINTER
 		os->pushUserPointer(classinfo.instance_id, val.get(), UserDataDestructor<ttype>::dtor);
+#else
+		void ** data = (void**)os->pushUserdata(classinfo.instance_id, sizeof(void*), UserDataDestructor<ttype>::dtor);
+		OX_ASSERT(data);
+		data[0] = val.get();
+#endif
 		val->osValueId = os->getValueId();
 		val->addRef();
 		os->pushStackValue();
@@ -199,13 +228,26 @@ static void releaseOXObject(Object * obj)
 	obj->releaseRef();
 }
 
+#ifdef OS_USE_OX_USERPOINTER
+#define OS_DECL_OX_CLASS_DTOR(type) \
+	template <> struct UserObjectDestructor<type>{ static void dtor(type * p){ releaseOXObject(p); } };
+#else
+#define OS_DECL_OX_CLASS_DTOR(type) \
+	template <> struct UserDataDestructor<type>{ \
+		static void dtor(ObjectScript::OS * os, void * data, void *){ \
+			OX_ASSERT(data); \
+			releaseOXObject(*(type**)data); \
+		} \
+	};
+#endif
+
 #define OS_DECL_OX_CLASS(type) \
 	template <> struct CtypeName<type> { static const OS_CHAR * getName(){ return type::getClassInfoStatic().classname; } }; \
 	template <> struct CtypeName< intrusive_ptr<type> > { static const OS_CHAR * getName(){ return type::getClassInfoStatic().classname; } }; \
 	template <> struct CtypeValue<type*>: public CtypeOXClass<type*>{}; \
 	template <> struct CtypeValue< intrusive_ptr<type> >: public CtypeOXSmartClass< intrusive_ptr<type> >{}; \
 	template <> struct CtypeValue< intrusive_ptr<type>& >: public CtypeOXSmartClass< intrusive_ptr<type> >{}; \
-	template <> struct UserObjectDestructor<type>{ static void dtor(type * p){ releaseOXObject(p); } };
+	OS_DECL_OX_CLASS_DTOR(type)
 
 // =====================================================================
 
@@ -1094,7 +1136,7 @@ static void registerActor(OS * os)
 			OS::String name = os->toString(-params+0);
 			timeMS duration = os->toInt(-params+2);
 			int loops = params > 3 ? os->toInt(-params+3) : 1;
-			bool twoSides = params > 4 ? os->toInt(-params+4) : false;
+			bool twoSides = params > 4 ? os->toBool(-params+4) : false;
 			timeMS delay = params > 5 ? os->toInt(-params+5) : 0;
 			Tween::EASE ease = params > 6 ? (Tween::EASE)os->toInt(-params+5) : Tween::ease_linear;
 
@@ -1272,12 +1314,12 @@ static void registerVStyleActor(OS * os)
 	registerOXClass<VStyleActor, Actor>(os, funcs);
 
 	OS::NumberDef globalNums[] = {
-		{"BLEND_DEFAULT", blend_mode::blend_default},
-		{"BLEND_DISABLED", blend_mode::blend_disabled},
-		{"BLEND_PREMULTIPLIED_ALPHA", blend_mode::blend_premultiplied_alpha},
-		{"BLEND_ALPHA", blend_mode::blend_alpha},
-		{"BLEND_ADD", blend_mode::blend_add},
-		{"BLEND_SUB", blend_mode::blend_sub},
+		{"BLEND_DEFAULT", blend_default},
+		{"BLEND_DISABLED", blend_disabled},
+		{"BLEND_PREMULTIPLIED_ALPHA", blend_premultiplied_alpha},
+		{"BLEND_ALPHA", blend_alpha},
+		{"BLEND_ADD", blend_add},
+		{"BLEND_SUB", blend_sub},
 		{}
 	};
 	os->pushGlobals();
@@ -1467,6 +1509,7 @@ std::string getOSDebugStr()
 	std::stringstream s;
 	if(ObjectScript::os){
 		s << endl;
+		s << "OS GC values: " << ObjectScript::os->getNumValues() << endl;
 		s << "OS MEM (Kb)";
 		s << " used:" << (ObjectScript::os->getUsedBytes() / 1024);
 		s << " cached:" << (ObjectScript::os->getCachedBytes() / 1024);
