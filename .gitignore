@@ -1,4 +1,8 @@
 syntax: glob
+examples/DemoOS/proj.android/jni22
+examples/DemoOS/proj.win32/Debug
+examples/DemoOS/proj.win32/Release
+examples/DemoOS/data-ram
 examples/Game/part4/data-ram
 .DS_Store
 ._*
