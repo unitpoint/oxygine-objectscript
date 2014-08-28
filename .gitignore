@@ -1,4 +1,6 @@
 syntax: glob
+examples/DemoOS/proj.android/bin
+examples/DemoOS/proj.android/gen
 examples/DemoOS/proj.android/jni22
 examples/DemoOS/proj.win32/Debug
 examples/DemoOS/proj.win32/Release

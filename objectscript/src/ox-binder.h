@@ -6,6 +6,13 @@
 #include <objectscript.h>
 #include <os-binder.h>
 #include <ext-datetime/os-datetime.h>
+#include <string>
+
+namespace oxygine { class EventCallback; class Event; }
+void retainOSEventCallback(ObjectScript::OS * os, oxygine::EventCallback * cb);
+void releaseOSEventCallback(ObjectScript::OS * os, oxygine::EventCallback * cb);
+void callOSEventFunction(ObjectScript::OS * os, int func_id, oxygine::Event * ev);
+std::string getOSDebugStr();
 
 using namespace oxygine;
 

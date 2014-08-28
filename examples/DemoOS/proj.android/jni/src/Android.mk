@@ -15,8 +15,11 @@ LOCAL_SRC_FILES += ../../../../../../objectscript/src/ext-datetime/os-datetime.c
 LOCAL_STATIC_LIBRARIES := oxygine-framework_static
 LOCAL_SHARED_LIBRARIES := SDL2
 
-LOCAL_CPPFLAGS += -DOX_WITH_OBJECTSCRIPT -I../../../../../../objectscript/src
-LOCAL_EXPORT_CPPFLAGS += -DOX_WITH_OBJECTSCRIPT -I../../../../../../objectscript/src
+LOCAL_CFLAGS += -DOX_WITH_OBJECTSCRIPT
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/../../../../../objectscript/src
+
+LOCAL_EXPORT_C_INCLUDES += $(LOCAL_C_INCLUDES)
+LOCAL_EXPORT_CFLAGS += $(LOCAL_CFLAGS)
 
 include $(BUILD_SHARED_LIBRARY)
 

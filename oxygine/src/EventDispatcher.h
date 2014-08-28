@@ -125,7 +125,7 @@ namespace oxygine
 		ObjectScript::OS * retainOS(ObjectScript::OS * os)
 		{
 			OX_ASSERT(os);
-			extern void retainOSEventCallback(ObjectScript::OS*, EventCallback*);
+			// extern void retainOSEventCallback(ObjectScript::OS*, EventCallback*);
 			retainOSEventCallback(os, this);
 			// os->retain();
 			return os;
@@ -134,7 +134,7 @@ namespace oxygine
 		void releaseOS(ObjectScript::OS * os)
 		{
 			OX_ASSERT(os);
-			extern void releaseOSEventCallback(ObjectScript::OS*, EventCallback*);
+			// extern void releaseOSEventCallback(ObjectScript::OS*, EventCallback*);
 			releaseOSEventCallback(os, this);
 			// os->release();
 		}
@@ -180,7 +180,7 @@ namespace oxygine
 		{
 			if(func_id){
 				OX_ASSERT(os && !cb);
-				extern void callOSEventFunction(ObjectScript::OS*, int, Event*);
+				// extern void callOSEventFunction(ObjectScript::OS*, int, Event*);
 				callOSEventFunction(os, func_id, ev);
 			}else{
 				OX_ASSERT(!os);

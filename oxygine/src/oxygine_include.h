@@ -144,6 +144,14 @@ struct OS_ClassInfo
 #define OS_DECLARE_CLASSINFO(type) \
 	OS_DECLARE_CLASSINFO_NAME(type, #type)
 
+#include <string>
+
+namespace oxygine { class EventCallback; class Event; }
+void retainOSEventCallback(ObjectScript::OS * os, oxygine::EventCallback * cb);
+void releaseOSEventCallback(ObjectScript::OS * os, oxygine::EventCallback * cb);
+void callOSEventFunction(ObjectScript::OS * os, int func_id, oxygine::Event * ev);
+std::string getOSDebugStr();
+
 #else // OX_WITH_OBJECTSCRIPT
 
 #define OS_DECLARE_CLASSINFO_STATIC_NAME(type, name)

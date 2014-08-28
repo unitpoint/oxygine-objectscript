@@ -262,7 +262,7 @@ namespace oxygine
 		s << "\nlisteners=" << getRoot()->getListenersCount() << "";
 
 #ifdef OX_WITH_OBJECTSCRIPT
-		std::string getOSDebugStr();
+		// std::string getOSDebugStr();
 		s << getOSDebugStr();
 #endif
 
